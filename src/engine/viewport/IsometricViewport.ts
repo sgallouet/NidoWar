@@ -123,7 +123,7 @@ export class IsometricViewport {
     const tileHeight = this.getScaledTileHeight();
 
     visible.sort((a, b) => (a.x + a.y) - (b.x + b.y));
-    this.terrainView.draw(this.isoRenderer, origin, this.camera.zoom);
+    this.terrainView.draw(this.isoRenderer, origin, this.camera.zoom, this.camera);
 
     for (const decal of visibleDecals) {
       const viewPos = this.camera.worldToView(decal.tileX, decal.tileY);

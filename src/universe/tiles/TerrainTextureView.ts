@@ -33,13 +33,14 @@ export class TerrainTextureView {
     return this.bounds;
   }
 
-  draw(renderer: IsometricRenderer, origin: Point, zoom: number): void {
+  draw(renderer: IsometricRenderer, origin: Point, zoom: number, camera: Point): void {
     const surface = this.getSurface();
+    const cameraOffset = worldToScreen(camera.x, camera.y, this.tileWidth, this.tileHeight);
 
     renderer.drawScreenImage(
       surface,
-      origin.x + this.bounds.minX * zoom,
-      origin.y + this.bounds.minY * zoom,
+      origin.x + (this.bounds.minX - cameraOffset.x) * zoom,
+      origin.y + (this.bounds.minY - cameraOffset.y) * zoom,
       zoom
     );
   }
