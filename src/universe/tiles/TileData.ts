@@ -18,6 +18,7 @@ export interface TileDecalData {
   readonly offsetX: number;
   readonly offsetY: number;
   readonly frameIndex: number;
+  readonly scale: number;
 }
 
 export function createTile(

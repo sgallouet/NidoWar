@@ -20,6 +20,10 @@ export class TileGrid {
     return this.map.getDecals();
   }
 
+  getProps(): TileDecalData[] {
+    return this.map.getProps();
+  }
+
   getDirtBlend(x: number, y: number): number {
     return this.map.getDirtBlend(x, y);
   }

@@ -15,7 +15,9 @@ export class TileView {
     private readonly renderer: IsometricRenderer,
     private readonly manifest: LoadedSpriteManifest,
     private readonly decalManifest: LoadedSpriteManifest,
-    private readonly decalImage: HTMLImageElement
+    private readonly decalImage: HTMLImageElement,
+    private readonly propManifest: LoadedSpriteManifest,
+    private readonly propImage: HTMLImageElement
   ) {}
 
   drawDecal(
@@ -35,7 +37,28 @@ export class TileView {
       tileWidth,
       tileHeight,
       offset,
-      tileWidth / this.manifest.frames[0].w
+      (tileWidth / this.manifest.frames[0].w) * decal.scale
+    );
+  }
+
+  drawProp(
+    prop: TileDecalData,
+    viewX: number,
+    viewY: number,
+    tileWidth: number,
+    tileHeight: number,
+    offset: Point
+  ): void {
+    this.renderer.drawIsometricSprite(
+      viewX + prop.offsetX,
+      viewY + prop.offsetY,
+      this.propImage,
+      this.propManifest,
+      prop.frameIndex,
+      tileWidth,
+      tileHeight,
+      offset,
+      (tileWidth / this.manifest.frames[0].w) * prop.scale
     );
   }
 }

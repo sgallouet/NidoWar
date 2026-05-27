@@ -1,0 +1,16 @@
+{
+  "name": "terrain_props",
+  "image": "sprites/terrain_props.png",
+  "frames": [
+    { "x": 0, "y": 0, "w": 32, "h": 32, "duration": 0, "center": { "x": 16, "y": 24 } },
+    { "x": 32, "y": 0, "w": 32, "h": 32, "duration": 0, "center": { "x": 16, "y": 24 } },
+    { "x": 64, "y": 0, "w": 32, "h": 32, "duration": 0, "center": { "x": 16, "y": 24 } },
+    { "x": 96, "y": 0, "w": 32, "h": 32, "duration": 0, "center": { "x": 16, "y": 24 } },
+    { "x": 128, "y": 0, "w": 32, "h": 32, "duration": 0, "center": { "x": 16, "y": 24 } },
+    { "x": 160, "y": 0, "w": 32, "h": 32, "duration": 0, "center": { "x": 16, "y": 24 } },
+    { "x": 192, "y": 0, "w": 32, "h": 32, "duration": 0, "center": { "x": 16, "y": 24 } },
+    { "x": 224, "y": 0, "w": 32, "h": 32, "duration": 0, "center": { "x": 16, "y": 24 } }
+  ],
+  "scale": 1.0,
+  "anchor": { "x": 0.5, "y": 0.75 }
+}

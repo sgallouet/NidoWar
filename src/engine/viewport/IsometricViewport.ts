@@ -31,6 +31,7 @@ export class IsometricViewport {
   private isoRenderer: IsometricRenderer;
   private manifest!: LoadedSpriteManifest;
   private decalManifest!: LoadedSpriteManifest;
+  private propManifest!: LoadedSpriteManifest;
   private terrainView: TerrainTextureView | null = null;
   private tileView: TileView | null = null;
   private tileWidth = 64;
@@ -56,11 +57,14 @@ export class IsometricViewport {
   async start(): Promise<void> {
     this.manifest = await loadSpriteManifest('/assets/manifests/grass_tile.json');
     this.decalManifest = await loadSpriteManifest('/assets/manifests/grass_decals.json');
+    this.propManifest = await loadSpriteManifest('/assets/manifests/terrain_props.json');
 
     const decalImageUrl = `/assets/${this.decalManifest.image}`;
+    const propImageUrl = `/assets/${this.propManifest.image}`;
     const grassTexture = await loadImage('/assets/sprites/terrain_grass.png');
     const dustTexture = await loadImage('/assets/sprites/terrain_dust.png');
     const decalImage = await loadImage(decalImageUrl);
+    const propImage = await loadImage(propImageUrl);
     this.syncTileSizeFromManifest();
     this.terrainView = new TerrainTextureView(
       this.grid,
@@ -73,7 +77,9 @@ export class IsometricViewport {
       this.isoRenderer,
       this.manifest,
       this.decalManifest,
-      decalImage
+      decalImage,
+      this.propManifest,
+      propImage
     );
 
     await this.isoRenderer.waitReady();
@@ -118,6 +124,7 @@ export class IsometricViewport {
 
     const visible = this.getVisibleTiles();
     const visibleDecals = this.getVisibleDecals(visible);
+    const visibleProps = this.getVisibleProps(visible);
     const origin = this.getCenteredMapOrigin();
     const tileWidth = this.getScaledTileWidth();
     const tileHeight = this.getScaledTileHeight();
@@ -128,6 +135,11 @@ export class IsometricViewport {
     for (const decal of visibleDecals) {
       const viewPos = this.camera.worldToView(decal.tileX, decal.tileY);
       this.tileView.drawDecal(decal, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
+    }
+
+    for (const prop of visibleProps) {
+      const viewPos = this.camera.worldToView(prop.tileX, prop.tileY);
+      this.tileView.drawProp(prop, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
     }
 
     this.isoRenderer.present();
@@ -187,6 +199,15 @@ export class IsometricViewport {
 
     return this.grid.getDecals().filter((decal) => {
       const tile = this.grid.getTile(decal.tileX, decal.tileY);
+      return tile ? visibleIds.has(tile.id) : false;
+    });
+  }
+
+  private getVisibleProps(visibleTiles: TileData[]): TileDecalData[] {
+    const visibleIds = new Set(visibleTiles.map((tile) => tile.id));
+
+    return this.grid.getProps().filter((prop) => {
+      const tile = this.grid.getTile(prop.tileX, prop.tileY);
       return tile ? visibleIds.has(tile.id) : false;
     });
   }
