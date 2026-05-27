@@ -9,6 +9,13 @@ export interface SpriteDrawOptions {
   scale?: number;
 }
 
+export interface ImageDrawOptions {
+  image: HTMLImageElement | HTMLCanvasElement;
+  screenX: number;
+  screenY: number;
+  scale?: number;
+}
+
 /**
  * Minimal renderer abstraction.
  * All concrete renderers (Canvas2D, later Pixi) implement this.
@@ -17,6 +24,7 @@ export interface SpriteDrawOptions {
 export interface IRenderer {
   clear(): void;
   drawTile(worldX: number, worldY: number, color: string): void;
+  drawImage(options: ImageDrawOptions): void;
   drawSprite(options: SpriteDrawOptions): void;
   getCanvas(): HTMLCanvasElement | null;
   present(): void;

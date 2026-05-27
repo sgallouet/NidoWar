@@ -29,6 +29,27 @@ export class MapModel {
     return this.decals;
   }
 
+  getDirtBlend(x: number, y: number): number {
+    const patches = [
+      { x: this.width * 0.26, y: this.height * 0.26, rx: 7.5, ry: 5.5 },
+      { x: this.width * 0.62, y: this.height * 0.38, rx: 8.5, ry: 6.0 },
+      { x: this.width * 0.42, y: this.height * 0.72, rx: 6.5, ry: 4.5 },
+    ];
+    let blend = 0;
+
+    for (const patch of patches) {
+      const dx = (x - patch.x) / patch.rx;
+      const dy = (y - patch.y) / patch.ry;
+      const wobble =
+        Math.sin(x * 1.13 + patch.y * 0.41) * 0.055 +
+        Math.sin(y * 1.47 + patch.x * 0.33) * 0.045;
+      const distance = Math.sqrt(dx * dx + dy * dy) + wobble;
+      blend = Math.max(blend, 1 - this.smoothstep(0.72, 1.08, distance));
+    }
+
+    return Math.max(0, Math.min(1, blend));
+  }
+
   private createTiles(fill: TerrainType): TileData[] {
     const tiles: TileData[] = [];
 
@@ -46,7 +67,7 @@ export class MapModel {
     let id = 0;
 
     for (const tile of this.tiles) {
-      if (tile.type !== 'grass') continue;
+      if (this.getDirtBlend(tile.x, tile.y) > 0.2) continue;
 
       const roll = this.hash(tile.x, tile.y, 19) % 100;
       if (roll > 8) continue;
@@ -71,22 +92,12 @@ export class MapModel {
   private pickTerrain(x: number, y: number, fallback: TerrainType): TerrainType {
     if (fallback !== 'grass') return fallback;
 
-    const patches = [
-      { x: this.width * 0.26, y: this.height * 0.26, rx: 7.5, ry: 5.5 },
-      { x: this.width * 0.62, y: this.height * 0.38, rx: 8.5, ry: 6.0 },
-      { x: this.width * 0.42, y: this.height * 0.72, rx: 6.5, ry: 4.5 },
-    ];
+    return this.getDirtBlend(x, y) > 0.52 ? 'dirt' : 'grass';
+  }
 
-    for (const patch of patches) {
-      const dx = (x - patch.x) / patch.rx;
-      const dy = (y - patch.y) / patch.ry;
-      const edgeNoise = (this.hash(x, y, 71) % 100) / 450;
-      if (dx * dx + dy * dy < 1 - edgeNoise) {
-        return 'dirt';
-      }
-    }
-
-    return 'grass';
+  private smoothstep(edge0: number, edge1: number, value: number): number {
+    const amount = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
+    return amount * amount * (3 - 2 * amount);
   }
 
   private hash(x: number, y: number, seed: number): number {

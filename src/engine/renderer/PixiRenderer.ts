@@ -6,7 +6,7 @@
 
 import { Application, Graphics, Color, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { IRenderer } from './IRenderer';
-import type { SpriteDrawOptions } from './IRenderer';
+import type { ImageDrawOptions, SpriteDrawOptions } from './IRenderer';
 
 export class PixiRenderer implements IRenderer {
   private app!: Application;
@@ -78,6 +78,17 @@ export class PixiRenderer implements IRenderer {
 
     // Light border
     this.graphics.stroke({ color: 0x1a1a1a, width: 1 });
+  }
+
+  drawImage(options: ImageDrawOptions): void {
+    const sprite = new Sprite({
+      texture: Texture.from(options.image),
+      roundPixels: true,
+    });
+
+    sprite.position.set(Math.round(options.screenX), Math.round(options.screenY));
+    sprite.scale.set(options.scale ?? 1);
+    this.app.stage.addChild(sprite);
   }
 
   drawSprite(options: SpriteDrawOptions): void {

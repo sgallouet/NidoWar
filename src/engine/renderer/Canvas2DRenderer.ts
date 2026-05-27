@@ -1,5 +1,5 @@
 import type { IRenderer } from './IRenderer';
-import type { SpriteDrawOptions } from './IRenderer';
+import type { ImageDrawOptions, SpriteDrawOptions } from './IRenderer';
 
 /**
  * Minimal 2D Canvas renderer for early proofs.
@@ -91,6 +91,19 @@ export class Canvas2DRenderer implements IRenderer {
     ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 1;
     ctx.stroke();
+  }
+
+  drawImage(options: ImageDrawOptions): void {
+    this.ensureContext();
+    const scale = options.scale ?? 1;
+
+    this.ctx!.drawImage(
+      options.image,
+      Math.round(options.screenX),
+      Math.round(options.screenY),
+      options.image.width * scale,
+      options.image.height * scale
+    );
   }
 
   drawSprite(options: SpriteDrawOptions): void {

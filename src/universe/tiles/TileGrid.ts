@@ -19,4 +19,8 @@ export class TileGrid {
   getDecals(): TileDecalData[] {
     return this.map.getDecals();
   }
+
+  getDirtBlend(x: number, y: number): number {
+    return this.map.getDirtBlend(x, y);
+  }
 }

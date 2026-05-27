@@ -9,6 +9,7 @@ import { Camera } from '../camera/Camera';
 import { PointerInput } from '../input/PointerInput';
 import { TileGrid } from '../../universe/tiles/TileGrid';
 import { TileView } from '../../universe/tiles/TileView';
+import { TerrainTextureView } from '../../universe/tiles/TerrainTextureView';
 import { loadSpriteManifest, loadImage } from '../assets/AssetLoader';
 import type { LoadedSpriteManifest } from '../assets/AssetManifest';
 import { screenToWorld, worldToScreen } from '@engine/isometric';
@@ -29,8 +30,8 @@ export class IsometricViewport {
   private grid: TileGrid;
   private isoRenderer: IsometricRenderer;
   private manifest!: LoadedSpriteManifest;
-  private dirtManifest!: LoadedSpriteManifest;
   private decalManifest!: LoadedSpriteManifest;
+  private terrainView: TerrainTextureView | null = null;
   private tileView: TileView | null = null;
   private tileWidth = 64;
   private tileHeight = 32;
@@ -54,22 +55,23 @@ export class IsometricViewport {
 
   async start(): Promise<void> {
     this.manifest = await loadSpriteManifest('/assets/manifests/grass_tile.json');
-    this.dirtManifest = await loadSpriteManifest('/assets/manifests/dirt_tile.json');
     this.decalManifest = await loadSpriteManifest('/assets/manifests/grass_decals.json');
 
-    const imageUrl = `/assets/${this.manifest.image}`;
-    const dirtImageUrl = `/assets/${this.dirtManifest.image}`;
     const decalImageUrl = `/assets/${this.decalManifest.image}`;
-    const tileImage = await loadImage(imageUrl);
-    const dirtImage = await loadImage(dirtImageUrl);
+    const grassTexture = await loadImage('/assets/sprites/terrain_grass.png');
+    const dustTexture = await loadImage('/assets/sprites/terrain_dust.png');
     const decalImage = await loadImage(decalImageUrl);
     this.syncTileSizeFromManifest();
+    this.terrainView = new TerrainTextureView(
+      this.grid,
+      grassTexture,
+      dustTexture,
+      this.tileWidth,
+      this.tileHeight
+    );
     this.tileView = new TileView(
       this.isoRenderer,
       this.manifest,
-      tileImage,
-      this.dirtManifest,
-      dirtImage,
       this.decalManifest,
       decalImage
     );
@@ -112,7 +114,7 @@ export class IsometricViewport {
 
   private render(): void {
     this.isoRenderer.clear();
-    if (!this.tileView) return;
+    if (!this.tileView || !this.terrainView) return;
 
     const visible = this.getVisibleTiles();
     const visibleDecals = this.getVisibleDecals(visible);
@@ -121,11 +123,7 @@ export class IsometricViewport {
     const tileHeight = this.getScaledTileHeight();
 
     visible.sort((a, b) => (a.x + a.y) - (b.x + b.y));
-
-    for (const tile of visible) {
-      const viewPos = this.camera.worldToView(tile.x, tile.y);
-      this.tileView.draw(tile, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
-    }
+    this.terrainView.draw(this.isoRenderer, origin, this.camera.zoom);
 
     for (const decal of visibleDecals) {
       const viewPos = this.camera.worldToView(decal.tileX, decal.tileY);
@@ -145,50 +143,17 @@ export class IsometricViewport {
 
   private getCenteredMapOrigin(): { x: number; y: number } {
     const canvas = this.getCanvas();
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas || !this.terrainView) return { x: 0, y: 0 };
 
-    const bounds = this.getMapSpriteBounds();
-    const mapWidth = bounds.maxX - bounds.minX;
-    const mapHeight = bounds.maxY - bounds.minY;
+    const bounds = this.terrainView.getBounds();
+    const zoom = this.camera.zoom;
+    const mapWidth = (bounds.maxX - bounds.minX) * zoom;
+    const mapHeight = (bounds.maxY - bounds.minY) * zoom;
 
     return {
-      x: Math.round((canvas.width - mapWidth) / 2 - bounds.minX),
-      y: Math.round((canvas.height - mapHeight) / 2 - bounds.minY),
+      x: Math.round((canvas.width - mapWidth) / 2 - bounds.minX * zoom),
+      y: Math.round((canvas.height - mapHeight) / 2 - bounds.minY * zoom),
     };
-  }
-
-  private getMapSpriteBounds(): {
-    minX: number;
-    minY: number;
-    maxX: number;
-    maxY: number;
-  } {
-    const frame = this.manifest.frames[0];
-    const center = frame.center;
-    const scale = this.manifest.scale * this.camera.zoom;
-    const tileWidth = this.getScaledTileWidth();
-    const tileHeight = this.getScaledTileHeight();
-    const bounds = {
-      minX: Number.POSITIVE_INFINITY,
-      minY: Number.POSITIVE_INFINITY,
-      maxX: Number.NEGATIVE_INFINITY,
-      maxY: Number.NEGATIVE_INFINITY,
-    };
-
-    for (const tile of this.grid.getAll()) {
-      const screenPos = worldToScreen(tile.x, tile.y, tileWidth, tileHeight);
-      const left = screenPos.x - center.x * scale;
-      const top = screenPos.y - center.y * scale;
-      const right = left + frame.w * scale;
-      const bottom = top + frame.h * scale;
-
-      bounds.minX = Math.min(bounds.minX, left);
-      bounds.minY = Math.min(bounds.minY, top);
-      bounds.maxX = Math.max(bounds.maxX, right);
-      bounds.maxY = Math.max(bounds.maxY, bottom);
-    }
-
-    return bounds;
   }
 
   private getVisibleTiles(): TileData[] {

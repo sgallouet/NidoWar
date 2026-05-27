@@ -61,6 +61,20 @@ export class IsometricRenderer {
     });
   }
 
+  drawScreenImage(
+    image: HTMLImageElement | HTMLCanvasElement,
+    screenX: number,
+    screenY: number,
+    scale = 1
+  ): void {
+    this.inner.drawImage({
+      image,
+      screenX,
+      screenY,
+      scale,
+    });
+  }
+
   getCanvas(): HTMLCanvasElement | null {
     return this.inner.getCanvas();
   }
