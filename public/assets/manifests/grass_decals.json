@@ -2,38 +2,30 @@
   "name": "grass_decals",
   "image": "sprites/grass_decals.png",
   "frames": [
-    {
-      "x": 0,
-      "y": 0,
-      "w": 16,
-      "h": 16,
-      "duration": 0,
-      "center": { "x": 8, "y": 12 }
-    },
-    {
-      "x": 16,
-      "y": 0,
-      "w": 16,
-      "h": 16,
-      "duration": 0,
-      "center": { "x": 8, "y": 11 }
-    },
-    {
-      "x": 32,
-      "y": 0,
-      "w": 16,
-      "h": 16,
-      "duration": 0,
-      "center": { "x": 8, "y": 12 }
-    },
-    {
-      "x": 48,
-      "y": 0,
-      "w": 16,
-      "h": 16,
-      "duration": 0,
-      "center": { "x": 8, "y": 11 }
-    }
+    { "x": 0, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 16, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 32, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 48, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 64, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 80, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 96, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 112, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 128, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 144, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 160, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 176, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 192, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 208, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 224, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 240, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 256, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 272, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 288, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 304, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 320, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 336, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 352, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } },
+    { "x": 368, "y": 0, "w": 16, "h": 16, "duration": 0, "center": { "x": 8, "y": 12 } }
   ],
   "scale": 1.0,
   "anchor": { "x": 0.5, "y": 0.75 }

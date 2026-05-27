@@ -34,7 +34,7 @@ export class MapModel {
 
     for (let y = 0; y < this.height; y++) {
       for (let x = 0; x < this.width; x++) {
-        tiles.push(createTile(y * this.width + x, x, y, fill));
+        tiles.push(createTile(y * this.width + x, x, y, this.pickTerrain(x, y, fill)));
       }
     }
 
@@ -46,8 +46,10 @@ export class MapModel {
     let id = 0;
 
     for (const tile of this.tiles) {
+      if (tile.type !== 'grass') continue;
+
       const roll = this.hash(tile.x, tile.y, 19) % 100;
-      if (roll > 17) continue;
+      if (roll > 8) continue;
 
       decals.push({
         id: id++,
@@ -55,18 +57,36 @@ export class MapModel {
         tileY: tile.y,
         offsetX: (this.hash(tile.x, tile.y, 31) % 56) / 100 - 0.28,
         offsetY: (this.hash(tile.x, tile.y, 47) % 56) / 100 - 0.28,
-        frameIndex: this.pickFrame(roll),
+        frameIndex: this.pickFrame(tile.x, tile.y),
       });
     }
 
     return decals;
   }
 
-  private pickFrame(roll: number): number {
-    if (roll < 5) return 0;
-    if (roll < 9) return 1;
-    if (roll < 12) return 2;
-    return 3;
+  private pickFrame(x: number, y: number): number {
+    return this.hash(x, y, 83) % 24;
+  }
+
+  private pickTerrain(x: number, y: number, fallback: TerrainType): TerrainType {
+    if (fallback !== 'grass') return fallback;
+
+    const patches = [
+      { x: this.width * 0.26, y: this.height * 0.26, rx: 7.5, ry: 5.5 },
+      { x: this.width * 0.62, y: this.height * 0.38, rx: 8.5, ry: 6.0 },
+      { x: this.width * 0.42, y: this.height * 0.72, rx: 6.5, ry: 4.5 },
+    ];
+
+    for (const patch of patches) {
+      const dx = (x - patch.x) / patch.rx;
+      const dy = (y - patch.y) / patch.ry;
+      const edgeNoise = (this.hash(x, y, 71) % 100) / 450;
+      if (dx * dx + dy * dy < 1 - edgeNoise) {
+        return 'dirt';
+      }
+    }
+
+    return 'grass';
   }
 
   private hash(x: number, y: number, seed: number): number {

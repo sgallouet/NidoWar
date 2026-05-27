@@ -1,6 +1,6 @@
 {
-  "name": "grass_tile",
-  "image": "sprites/grass_tile.png",
+  "name": "dirt_tile",
+  "image": "sprites/dirt_tile.png",
   "frames": [
     {
       "x": 0,

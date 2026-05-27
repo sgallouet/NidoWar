@@ -15,6 +15,8 @@ export class TileView {
     private readonly renderer: IsometricRenderer,
     private readonly manifest: LoadedSpriteManifest,
     private readonly image: HTMLImageElement,
+    private readonly dirtManifest: LoadedSpriteManifest,
+    private readonly dirtImage: HTMLImageElement,
     private readonly decalManifest: LoadedSpriteManifest,
     private readonly decalImage: HTMLImageElement
   ) {}
@@ -33,6 +35,20 @@ export class TileView {
         viewY,
         this.image,
         this.manifest,
+        0,
+        tileWidth,
+        tileHeight,
+        offset
+      );
+      return;
+    }
+
+    if (tile.type === 'dirt') {
+      this.renderer.drawIsometricSprite(
+        viewX,
+        viewY,
+        this.dirtImage,
+        this.dirtManifest,
         0,
         tileWidth,
         tileHeight,

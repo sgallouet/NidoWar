@@ -29,6 +29,7 @@ export class IsometricViewport {
   private grid: TileGrid;
   private isoRenderer: IsometricRenderer;
   private manifest!: LoadedSpriteManifest;
+  private dirtManifest!: LoadedSpriteManifest;
   private decalManifest!: LoadedSpriteManifest;
   private tileView: TileView | null = null;
   private tileWidth = 64;
@@ -53,17 +54,22 @@ export class IsometricViewport {
 
   async start(): Promise<void> {
     this.manifest = await loadSpriteManifest('/assets/manifests/grass_tile.json');
+    this.dirtManifest = await loadSpriteManifest('/assets/manifests/dirt_tile.json');
     this.decalManifest = await loadSpriteManifest('/assets/manifests/grass_decals.json');
 
     const imageUrl = `/assets/${this.manifest.image}`;
+    const dirtImageUrl = `/assets/${this.dirtManifest.image}`;
     const decalImageUrl = `/assets/${this.decalManifest.image}`;
     const tileImage = await loadImage(imageUrl);
+    const dirtImage = await loadImage(dirtImageUrl);
     const decalImage = await loadImage(decalImageUrl);
     this.syncTileSizeFromManifest();
     this.tileView = new TileView(
       this.isoRenderer,
       this.manifest,
       tileImage,
+      this.dirtManifest,
+      dirtImage,
       this.decalManifest,
       decalImage
     );
