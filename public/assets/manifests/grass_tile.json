@@ -1,0 +1,16 @@
+{
+  "name": "grass_tile",
+  "image": "sprites/grass_tile.png",
+  "frames": [
+    {
+      "x": 6,
+      "y": 0,
+      "w": 52,
+      "h": 32,
+      "duration": 0,
+      "center": { "x": 26, "y": 31 }
+    }
+  ],
+  "scale": 1.0,
+  "anchor": { "x": 0.5, "y": 1.0 }
+}
