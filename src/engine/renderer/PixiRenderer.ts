@@ -6,13 +6,14 @@
 
 import { Application, Graphics, Color, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { IRenderer } from './IRenderer';
-import type { ImageDrawOptions, SpriteDrawOptions } from './IRenderer';
+import type { ImageDrawOptions, RadialLightDrawOptions, SpriteDrawOptions } from './IRenderer';
 
 export class PixiRenderer implements IRenderer {
   private app!: Application;
   private ready: Promise<void>;
   private graphics = new Graphics();
   private textureCache = new Map<string, Texture>();
+  private lightTextureCache = new Map<string, Texture>();
 
   constructor() {
     this.app = new Application();
@@ -108,6 +109,29 @@ export class PixiRenderer implements IRenderer {
     this.app.stage.addChild(sprite);
   }
 
+  drawNightLighting(ambientColor: string, ambientAlpha: number, lights: RadialLightDrawOptions[]): void {
+    const overlay = new Graphics();
+    overlay.rect(0, 0, this.app.renderer.width, this.app.renderer.height);
+    overlay.fill({ color: this.parseColor(ambientColor), alpha: ambientAlpha });
+    this.app.stage.addChild(overlay);
+
+    for (const light of lights) {
+      const sprite = new Sprite({
+        texture: this.getLightTexture(light.color),
+        anchor: 0.5,
+        roundPixels: true,
+      });
+
+      const diameter = light.radius * 2;
+      sprite.position.set(Math.round(light.screenX), Math.round(light.screenY));
+      sprite.width = diameter;
+      sprite.height = diameter;
+      sprite.alpha = light.intensity;
+      sprite.blendMode = 'add';
+      this.app.stage.addChild(sprite);
+    }
+  }
+
   private getFrameTexture(options: SpriteDrawOptions): Texture {
     const frameIndex = options.frameIndex ?? 0;
     const frame = options.manifest.frames[frameIndex];
@@ -124,6 +148,43 @@ export class PixiRenderer implements IRenderer {
 
     this.textureCache.set(key, texture);
     return texture;
+  }
+
+  private getLightTexture(color: string): Texture {
+    const cached = this.lightTextureCache.get(color);
+    if (cached) return cached;
+
+    const size = 96;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('[PixiRenderer] Failed to create light texture');
+
+    const center = size / 2;
+    const gradient = ctx.createRadialGradient(center, center, 0, center, center, center);
+    gradient.addColorStop(0, this.hexToRgba(color, 1));
+    gradient.addColorStop(0.18, this.hexToRgba('#fff1b8', 0.82));
+    gradient.addColorStop(0.42, this.hexToRgba(color, 0.36));
+    gradient.addColorStop(1, this.hexToRgba(color, 0));
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    const texture = Texture.from(canvas);
+    this.lightTextureCache.set(color, texture);
+    return texture;
+  }
+
+  private parseColor(hex: string): number {
+    return parseInt(hex.replace('#', ''), 16);
+  }
+
+  private hexToRgba(hex: string, alpha: number): string {
+    const value = this.parseColor(hex);
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
   }
 
   private resize(): void {

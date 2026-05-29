@@ -1,5 +1,5 @@
 import type { IRenderer } from './IRenderer';
-import type { ImageDrawOptions, SpriteDrawOptions } from './IRenderer';
+import type { ImageDrawOptions, RadialLightDrawOptions, SpriteDrawOptions } from './IRenderer';
 
 /**
  * Minimal 2D Canvas renderer for early proofs.
@@ -123,6 +123,52 @@ export class Canvas2DRenderer implements IRenderer {
       frame.w * scale,
       frame.h * scale
     );
+  }
+
+  drawNightLighting(ambientColor: string, ambientAlpha: number, lights: RadialLightDrawOptions[]): void {
+    this.ensureContext();
+    const ctx = this.ctx!;
+    const previousComposite = ctx.globalCompositeOperation;
+    const previousAlpha = ctx.globalAlpha;
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = ambientAlpha;
+    ctx.fillStyle = ambientColor;
+    ctx.fillRect(0, 0, this.canvas!.width, this.canvas!.height);
+
+    ctx.globalCompositeOperation = 'lighter';
+    for (const light of lights) {
+      const gradient = ctx.createRadialGradient(
+        light.screenX,
+        light.screenY,
+        0,
+        light.screenX,
+        light.screenY,
+        light.radius
+      );
+      gradient.addColorStop(0, this.hexToRgba(light.color, light.intensity));
+      gradient.addColorStop(0.35, this.hexToRgba(light.color, light.intensity * 0.45));
+      gradient.addColorStop(1, this.hexToRgba(light.color, 0));
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = gradient;
+      ctx.fillRect(
+        light.screenX - light.radius,
+        light.screenY - light.radius,
+        light.radius * 2,
+        light.radius * 2
+      );
+    }
+
+    ctx.globalAlpha = previousAlpha;
+    ctx.globalCompositeOperation = previousComposite;
+  }
+
+  private hexToRgba(hex: string, alpha: number): string {
+    const value = parseInt(hex.replace('#', ''), 16);
+    const r = (value >> 16) & 255;
+    const g = (value >> 8) & 255;
+    const b = value & 255;
+    return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
   }
 
   present(): void {

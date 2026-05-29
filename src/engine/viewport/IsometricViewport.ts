@@ -17,7 +17,8 @@ import { Canvas2DRenderer } from '../renderer/Canvas2DRenderer';
 import { IsometricRenderer } from '../renderer/IsometricRenderer';
 import { PixiRenderer } from '../renderer/PixiRenderer';
 import type { IRenderer } from '../renderer/IRenderer';
-import type { TileData, TileDecalData } from '../../universe/tiles/TileData';
+import type { TileData, TileDecalData, TileLightData } from '../../universe/tiles/TileData';
+import type { RadialLightDrawOptions } from '../renderer/IRenderer';
 
 export interface ViewportOptions {
   usePixi?: boolean;
@@ -32,6 +33,7 @@ export class IsometricViewport {
   private manifest!: LoadedSpriteManifest;
   private decalManifest!: LoadedSpriteManifest;
   private propManifest!: LoadedSpriteManifest;
+  private torchManifest!: LoadedSpriteManifest;
   private terrainView: TerrainTextureView | null = null;
   private tileView: TileView | null = null;
   private tileWidth = 64;
@@ -58,13 +60,16 @@ export class IsometricViewport {
     this.manifest = await loadSpriteManifest('/assets/manifests/grass_tile.json');
     this.decalManifest = await loadSpriteManifest('/assets/manifests/grass_decals.json');
     this.propManifest = await loadSpriteManifest('/assets/manifests/terrain_props.json');
+    this.torchManifest = await loadSpriteManifest('/assets/manifests/torch.json');
 
     const decalImageUrl = `/assets/${this.decalManifest.image}`;
     const propImageUrl = `/assets/${this.propManifest.image}`;
+    const torchImageUrl = `/assets/${this.torchManifest.image}`;
     const grassTexture = await loadImage('/assets/sprites/terrain_grass.png');
     const dustTexture = await loadImage('/assets/sprites/terrain_dust.png');
     const decalImage = await loadImage(decalImageUrl);
     const propImage = await loadImage(propImageUrl);
+    const torchImage = await loadImage(torchImageUrl);
     this.syncTileSizeFromManifest();
     this.terrainView = new TerrainTextureView(
       this.grid,
@@ -79,7 +84,9 @@ export class IsometricViewport {
       this.decalManifest,
       decalImage,
       this.propManifest,
-      propImage
+      propImage,
+      this.torchManifest,
+      torchImage
     );
 
     await this.isoRenderer.waitReady();
@@ -125,6 +132,7 @@ export class IsometricViewport {
     const visible = this.getVisibleTiles();
     const visibleDecals = this.getVisibleDecals(visible);
     const visibleProps = this.getVisibleProps(visible);
+    const torches = this.grid.getTorches();
     const origin = this.getCenteredMapOrigin();
     const tileWidth = this.getScaledTileWidth();
     const tileHeight = this.getScaledTileHeight();
@@ -141,6 +149,17 @@ export class IsometricViewport {
       const viewPos = this.camera.worldToView(prop.tileX, prop.tileY);
       this.tileView.drawProp(prop, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
     }
+
+    for (const torch of torches) {
+      const viewPos = this.camera.worldToView(torch.tileX, torch.tileY);
+      this.tileView.drawTorch(torch, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
+    }
+
+    this.isoRenderer.drawNightLighting(
+      '#071025',
+      0.68,
+      this.getLights(torches, origin, tileWidth, tileHeight)
+    );
 
     this.isoRenderer.present();
   }
@@ -209,6 +228,26 @@ export class IsometricViewport {
     return this.grid.getProps().filter((prop) => {
       const tile = this.grid.getTile(prop.tileX, prop.tileY);
       return tile ? visibleIds.has(tile.id) : false;
+    });
+  }
+
+  private getLights(
+    torches: TileLightData[],
+    origin: { x: number; y: number },
+    tileWidth: number,
+    tileHeight: number
+  ): RadialLightDrawOptions[] {
+    return torches.map((torch) => {
+      const viewPos = this.camera.worldToView(torch.tileX + torch.offsetX, torch.tileY + torch.offsetY);
+      const screenPos = worldToScreen(viewPos.x, viewPos.y, tileWidth, tileHeight);
+
+      return {
+        screenX: origin.x + screenPos.x,
+        screenY: origin.y + screenPos.y - 34 * this.camera.zoom,
+        radius: torch.radius * this.camera.zoom,
+        intensity: torch.intensity,
+        color: torch.color,
+      };
     });
   }
 

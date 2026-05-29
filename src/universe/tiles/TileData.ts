@@ -21,6 +21,17 @@ export interface TileDecalData {
   readonly scale: number;
 }
 
+export interface TileLightData {
+  readonly id: number;
+  readonly tileX: number;
+  readonly tileY: number;
+  readonly offsetX: number;
+  readonly offsetY: number;
+  readonly radius: number;
+  readonly intensity: number;
+  readonly color: string;
+}
+
 export function createTile(
   id: number,
   x: number,

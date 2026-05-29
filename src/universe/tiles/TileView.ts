@@ -1,4 +1,4 @@
-import type { TileDecalData } from './TileData';
+import type { TileDecalData, TileLightData } from './TileData';
 import type { LoadedSpriteManifest } from '@engine/assets/AssetManifest';
 import type { IsometricRenderer } from '@engine/renderer/IsometricRenderer';
 import type { Point } from '@engine/isometric';
@@ -17,7 +17,9 @@ export class TileView {
     private readonly decalManifest: LoadedSpriteManifest,
     private readonly decalImage: HTMLImageElement,
     private readonly propManifest: LoadedSpriteManifest,
-    private readonly propImage: HTMLImageElement
+    private readonly propImage: HTMLImageElement,
+    private readonly torchManifest: LoadedSpriteManifest,
+    private readonly torchImage: HTMLImageElement
   ) {}
 
   drawDecal(
@@ -59,6 +61,27 @@ export class TileView {
       tileHeight,
       offset,
       (tileWidth / this.manifest.frames[0].w) * prop.scale
+    );
+  }
+
+  drawTorch(
+    torch: TileLightData,
+    viewX: number,
+    viewY: number,
+    tileWidth: number,
+    tileHeight: number,
+    offset: Point
+  ): void {
+    this.renderer.drawIsometricSprite(
+      viewX + torch.offsetX,
+      viewY + torch.offsetY,
+      this.torchImage,
+      this.torchManifest,
+      0,
+      tileWidth,
+      tileHeight,
+      offset,
+      tileWidth / this.manifest.frames[0].w
     );
   }
 }

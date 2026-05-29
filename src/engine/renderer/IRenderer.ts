@@ -16,6 +16,14 @@ export interface ImageDrawOptions {
   scale?: number;
 }
 
+export interface RadialLightDrawOptions {
+  screenX: number;
+  screenY: number;
+  radius: number;
+  color: string;
+  intensity: number;
+}
+
 /**
  * Minimal renderer abstraction.
  * All concrete renderers (Canvas2D, later Pixi) implement this.
@@ -26,6 +34,7 @@ export interface IRenderer {
   drawTile(worldX: number, worldY: number, color: string): void;
   drawImage(options: ImageDrawOptions): void;
   drawSprite(options: SpriteDrawOptions): void;
+  drawNightLighting(ambientColor: string, ambientAlpha: number, lights: RadialLightDrawOptions[]): void;
   getCanvas(): HTMLCanvasElement | null;
   present(): void;
 }

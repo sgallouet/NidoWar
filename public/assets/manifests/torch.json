@@ -1,0 +1,9 @@
+{
+  "name": "torch",
+  "image": "sprites/torch.png",
+  "frames": [
+    { "x": 0, "y": 0, "w": 32, "h": 48, "duration": 0, "center": { "x": 16, "y": 42 } }
+  ],
+  "scale": 1.0,
+  "anchor": { "x": 0.5, "y": 0.875 }
+}

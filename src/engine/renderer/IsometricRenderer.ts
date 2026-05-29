@@ -7,6 +7,7 @@
  */
 
 import type { IRenderer } from './IRenderer';
+import type { RadialLightDrawOptions } from './IRenderer';
 import { worldToScreen, DEFAULT_TILE } from '@engine/isometric';
 import type { LoadedSpriteManifest } from '@engine/assets/AssetManifest';
 import type { Point } from '@engine/isometric';
@@ -73,6 +74,14 @@ export class IsometricRenderer {
       screenY,
       scale,
     });
+  }
+
+  drawNightLighting(
+    ambientColor: string,
+    ambientAlpha: number,
+    lights: RadialLightDrawOptions[]
+  ): void {
+    this.inner.drawNightLighting(ambientColor, ambientAlpha, lights);
   }
 
   getCanvas(): HTMLCanvasElement | null {
