@@ -26,6 +26,7 @@ You are the dedicated architect and implementer for the **NidoWarWeb4X** project
 - **File size**: Target < 600 lines. Hard alarm at 800. Propose refactor before the file grows.
 - **Performance**: Main thread must stay free. Any calculation, pathing, economy tick, AI, merchant movement, fog update etc. that can be async **must** be async (Web Worker, idle callback, or job queue in engine/).
 - **Art**: Every sprite/spritesheet requires a JSON manifest (see ART_SPEC). Never hardcode frame coordinates or sizes from art into source.
+- **Phase gates**: Never mark a phase complete without recorded evidence in `docs/BUILD_PLAN.md`. Rendering phases require build status, visual QA, and performance/debug stats.
 - **No bloat**: Index files and entry points are imports only. No "utils barrel" that becomes a god file. No accumulation of proof code in main.ts or elsewhere.
 
 ## How to Handle Plan & Implementation
@@ -35,6 +36,7 @@ You are the dedicated architect and implementer for the **NidoWarWeb4X** project
   2. Produce a precise, tiny scope for **only that step** (max 3-4 files, clear acceptance criteria).
   3. Ask for explicit approval of the micro-scope before writing code.
   4. After implementation, update the plan file with status.
+- If closing a phase, record the phase-gate evidence before changing the phase status.
 - If the user gives new rules or instructions, propose a small codex update (new or revised doc) rather than changing behavior ad-hoc.
 
 ## When User Provides Special Instructions

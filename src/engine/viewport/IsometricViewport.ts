@@ -20,6 +20,22 @@ import type { IRenderer } from '../renderer/IRenderer';
 import type { TileData, TileDecalData, TileLightData } from '../../universe/tiles/TileData';
 import type { RadialLightDrawOptions } from '../renderer/IRenderer';
 
+interface Phase1RenderStats {
+  frameMs: number;
+  visibleTiles: number;
+  visibleDecals: number;
+  visibleProps: number;
+  torches: number;
+  drawCalls: number;
+  visibleSprites: number;
+  pooledSprites: number;
+  stageChildren: number;
+}
+
+type PhaseGateWindow = Window & {
+  __NIDOWAR_PHASE1_STATS__?: Phase1RenderStats;
+};
+
 export interface ViewportOptions {
   usePixi?: boolean;
   mapWidth?: number;
@@ -39,6 +55,9 @@ export class IsometricViewport {
   private tileWidth = 64;
   private tileHeight = 32;
   private selectedTile: { x: number; y: number } | null = null;
+  private readonly debugPerf = typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('debug');
+  private frameCount = 0;
 
   constructor(options: ViewportOptions = {}) {
     const mapW = options.mapWidth ?? 50;
@@ -61,12 +80,14 @@ export class IsometricViewport {
     this.decalManifest = await loadSpriteManifest('/assets/manifests/grass_decals.json');
     this.propManifest = await loadSpriteManifest('/assets/manifests/terrain_props.json');
     this.torchManifest = await loadSpriteManifest('/assets/manifests/torch.json');
+    const grassTextureManifest = await loadSpriteManifest('/assets/manifests/terrain_grass_texture.json');
+    const dustTextureManifest = await loadSpriteManifest('/assets/manifests/terrain_dust_texture.json');
 
     const decalImageUrl = `/assets/${this.decalManifest.image}`;
     const propImageUrl = `/assets/${this.propManifest.image}`;
     const torchImageUrl = `/assets/${this.torchManifest.image}`;
-    const grassTexture = await loadImage('/assets/sprites/terrain_grass.png');
-    const dustTexture = await loadImage('/assets/sprites/terrain_dust.png');
+    const grassTexture = await loadImage(`/assets/${grassTextureManifest.image}`);
+    const dustTexture = await loadImage(`/assets/${dustTextureManifest.image}`);
     const decalImage = await loadImage(decalImageUrl);
     const propImage = await loadImage(propImageUrl);
     const torchImage = await loadImage(torchImageUrl);
@@ -126,6 +147,7 @@ export class IsometricViewport {
   }
 
   private render(): void {
+    const frameStart = performance.now();
     this.isoRenderer.clear();
     if (!this.tileView || !this.terrainView) return;
 
@@ -162,6 +184,14 @@ export class IsometricViewport {
     );
 
     this.isoRenderer.present();
+    this.publishPhase1Stats({
+      frameMs: performance.now() - frameStart,
+      visibleTiles: visible.length,
+      visibleDecals: visibleDecals.length,
+      visibleProps: visibleProps.length,
+      torches: torches.length,
+      ...this.isoRenderer.getRenderStats(),
+    });
   }
 
   private syncTileSizeFromManifest(): void {
@@ -249,6 +279,18 @@ export class IsometricViewport {
         color: torch.color,
       };
     });
+  }
+
+  private publishPhase1Stats(stats: Phase1RenderStats): void {
+    (window as PhaseGateWindow).__NIDOWAR_PHASE1_STATS__ = stats;
+    document.documentElement.dataset.nidowarPhase1Stats = JSON.stringify(stats);
+
+    if (!this.debugPerf) return;
+
+    this.frameCount++;
+    if (this.frameCount % 30 === 0) {
+      console.table(stats);
+    }
   }
 
   private pickTile(screenX: number, screenY: number): { x: number; y: number } | null {

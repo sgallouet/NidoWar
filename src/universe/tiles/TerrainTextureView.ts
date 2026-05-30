@@ -41,7 +41,8 @@ export class TerrainTextureView {
       surface,
       origin.x + (this.bounds.minX - cameraOffset.x) * zoom,
       origin.y + (this.bounds.minY - cameraOffset.y) * zoom,
-      zoom
+      zoom,
+      'terrain'
     );
   }
 

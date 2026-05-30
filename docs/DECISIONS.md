@@ -22,4 +22,22 @@
 **Revisit trigger**: If bundle size or startup time on low-end devices becomes unacceptable, re-evaluate a custom lightweight Canvas path.
 
 ---
+
+## 2026-05 - Phase 1 Render Layer Hardening
+
+**Decision**: Keep the Pixi adapter behind `IRenderer`, but require persistent render layers and pooled sprites for map rendering.
+
+**Rationale**:
+- The terrain visual prototype added decals, props, torches, and lighting. Destroying and recreating Pixi display objects every render would create avoidable GC pressure during camera pan/zoom.
+- Persistent layers (`terrain`, `decal`, `prop`, `unit`, `lighting`) make Phase 2 hero/army rendering explicit instead of adding more one-off loops to the viewport.
+- `window.__NIDOWAR_PHASE1_STATS__` provides a lightweight phase-gate signal without adding a testing framework yet.
+
+**Constraints enforced**:
+- Renderer implementations must expose draw-call and object-pool stats.
+- New visual categories should target an explicit render layer.
+- Phase 1 cannot be closed until the stats are recorded in the build plan for desktop and mobile-sized viewport QA.
+
+**Status**: Approved for the Phase 1 hardening branch.
+
+---
 *All future rendering decisions must be recorded here before code is written.*

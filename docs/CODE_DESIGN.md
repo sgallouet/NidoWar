@@ -29,6 +29,7 @@
    - Code must remain easy to understand and change after years of additions.
    - When adding a new unit type, building, or terrain: it should only require changes inside its own universe/ subfolder + minimal registration.
    - Every new feature must come with a plan update first.
+   - Every phase closure must include evidence, not assertion: build result, visual QA, and relevant performance/debug stats.
 
 ## Implementation Rules
 - TypeScript strict.
@@ -40,5 +41,9 @@
 ## Art Integration Rule
 - All art access goes through JSON manifests (see ART_SPEC.md).
 - Never bake pixel coordinates from a specific sprite into gameplay or engine core.
+
+## Phase Gate Rule
+- A phase cannot be marked complete until its exit criteria have recorded evidence in `docs/BUILD_PLAN.md`.
+- For rendering phases, evidence must include frame timing, draw calls, visible object counts, and viewport/device context.
 
 Violations of the above are to be treated as bugs during review.

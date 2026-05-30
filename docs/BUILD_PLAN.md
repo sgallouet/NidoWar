@@ -1,12 +1,13 @@
 # NidoWarWeb4X - Build Plan
 
-**Status**: Phase 0 Complete (2026-04). Phase 1 Complete (2026-05). Next: Phase 2 hero/army visual foundations.
+**Status**: Phase 0 Complete (2026-04). Phase 1 Hardening in progress (2026-05). Next: Phase 1 gate evidence, then Phase 2 hero/army visual foundations.
 
 **Guiding Principles** (from CODE_DESIGN.md + user instructions)
 - Every change must stay inside the strict segregation (engine / gameplay / universe/*).
 - Every file must stay comfortably under 800 lines. Refactor immediately if approaching limit.
 - Performance work (async, culling, off-main) starts early, not bolted on later.
 - Art always goes through JSON manifest (ART_SPEC.md). No hard-coded sprite coords.
+- Phase completion requires evidence: build result, visual QA, and relevant performance/debug stats.
 - We only proceed to the next step after the current step is reviewed and accepted.
 - Use the project skill (/nido-plan) to keep this document updated and to generate the next micro-step details.
 
@@ -69,12 +70,27 @@
 - ~~1.11~~ **DONE (2026-05)** — PointerInput supports drag pan, wheel zoom, pinch zoom, and tap selection callbacks. Selection has no gameplay meaning yet.
 - ~~1.12~~ **DONE (2026-05)** — Added universe/tiles/MapModel.ts and renders a 50x50 map with culling through TileGrid + TileView.
 
-**Phase 1 Complete** (2026-05)
+**Phase 1 Visual Prototype Additions** (2026-05)
+- Terrain branch explored a blended terrain-surface renderer instead of per-tile base sprites.
+- Added clustered decals, sparse terrain props, and night torch lighting.
+- These additions are accepted as visual prototypes on top of Phase 1, not as gameplay scope.
+
+**Phase 1 Hardening (required before final close)**
+- ~~1.13~~ **DONE (2026-05)** - Terrain texture art access moved behind JSON manifests.
+- ~~1.14~~ **DONE (2026-05)** - Pixi renderer now uses persistent render layers and pooled sprites instead of destroying/recreating all display objects every frame.
+- ~~1.15~~ **DONE (2026-05)** - Phase-gate render stats exposed at `window.__NIDOWAR_PHASE1_STATS__`; `?debug` logs a periodic console table.
+- ~~1.16~~ **DONE (2026-05)** - Map visual generation split out of `MapModel` into focused terrain, decoration, light-source, and random helper modules.
+- **1.17 TODO** - Record desktop + mobile viewport QA evidence, including frame-time sample, visible counts, draw calls, pool size, and stage children.
+
+**Phase 1 Close Checklist**
 - `npm run build` passes.
-- Browser QA passed on desktop and mobile-sized viewport.
-- Pixi path renders the manifest grass sprite over a 50x50 isometric map.
-- Drag pan and wheel/pinch zoom keep tile registration continuous.
-- Rendering remains in engine/, tile data/view ownership remains in universe/tiles/, and gameplay rules are still absent.
+- Desktop browser QA captures a screenshot after initial load and after drag/zoom.
+- Mobile-sized viewport QA captures a screenshot after initial load and after drag/zoom.
+- `window.__NIDOWAR_PHASE1_STATS__` is recorded for desktop and mobile-sized viewport.
+- Target: p95 render work under 8ms during panning on the target mid-range Android device, or documented fallback plan if device access is unavailable.
+- Pixi path renders a 50x50 isometric map with terrain, decals, props, and torch lighting without tile registration drift.
+- Drag pan and wheel/pinch zoom keep terrain, decals, props, and lights registered together.
+- Rendering remains in engine/ and universe/tiles/. Gameplay rules remain absent.
 
 **Exit criteria**: Smooth panning + zooming on a 50x50 tile map on phone. Frame time < 8ms on mid-range Android. All drawing code lives in engine/ or universe/tiles/. Zero gameplay rules.
 

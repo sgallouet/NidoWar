@@ -1,19 +1,43 @@
 /**
- * Minimal PixiJS v8 adapter implementing IRenderer.
- * Uses Graphics for placeholder diamonds in the 1.4 proof.
+ * PixiJS v8 adapter implementing IRenderer.
+ * Keeps display objects pooled by render layer so camera movement does not
+ * allocate hundreds of sprites every frame.
  * The rest of the engine (IsometricRenderer, TileView, etc.) remains unaware of Pixi.
  */
 
-import { Application, Graphics, Color, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Application, Color, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import type { IRenderer } from './IRenderer';
-import type { ImageDrawOptions, RadialLightDrawOptions, SpriteDrawOptions } from './IRenderer';
+import type {
+  ImageDrawOptions,
+  RadialLightDrawOptions,
+  RenderLayer,
+  RenderStats,
+  SpriteDrawOptions,
+} from './IRenderer';
 
 export class PixiRenderer implements IRenderer {
   private app!: Application;
   private ready: Promise<void>;
+  private readonly layers: Record<RenderLayer, Container> = {
+    terrain: new Container(),
+    decal: new Container(),
+    prop: new Container(),
+    unit: new Container(),
+    lighting: new Container(),
+  };
   private graphics = new Graphics();
+  private lightingOverlay = new Graphics();
   private textureCache = new Map<string, Texture>();
   private lightTextureCache = new Map<string, Texture>();
+  private imageTextureCache = new Map<string, Texture>();
+  private spritePools = new Map<string, Sprite[]>();
+  private poolCursors = new Map<string, number>();
+  private stats: RenderStats = {
+    drawCalls: 0,
+    visibleSprites: 0,
+    pooledSprites: 0,
+    stageChildren: 0,
+  };
 
   constructor() {
     this.app = new Application();
@@ -39,7 +63,15 @@ export class PixiRenderer implements IRenderer {
       if (oldCanvas) oldCanvas.style.display = 'none';
     }
 
-    this.app.stage.addChild(this.graphics);
+    this.layers.terrain.addChild(this.graphics);
+    this.layers.lighting.addChild(this.lightingOverlay);
+    this.app.stage.addChild(
+      this.layers.terrain,
+      this.layers.decal,
+      this.layers.prop,
+      this.layers.unit,
+      this.layers.lighting
+    );
     window.addEventListener('resize', () => this.resize());
   }
 
@@ -49,12 +81,11 @@ export class PixiRenderer implements IRenderer {
 
   clear(): void {
     this.resize();
-    // Non-blocking clear; if not ready yet the next draw will handle
+    this.resetStats();
+    this.poolCursors.clear();
     this.graphics.clear();
-    // Also clear any other children added in future
-    while (this.app.stage.children.length > 1) {
-      this.app.stage.removeChildAt(1);
-    }
+    this.lightingOverlay.clear();
+    this.hidePooledSprites();
   }
 
   getCanvas(): HTMLCanvasElement | null {
@@ -79,66 +110,77 @@ export class PixiRenderer implements IRenderer {
 
     // Light border
     this.graphics.stroke({ color: 0x1a1a1a, width: 1 });
+    this.stats.drawCalls++;
   }
 
   drawImage(options: ImageDrawOptions): void {
-    const sprite = new Sprite({
-      texture: Texture.from(options.image),
-      roundPixels: true,
-    });
+    const layer = options.layer ?? 'terrain';
+    const key = `${layer}:image:${this.getImageKey(options.image)}`;
+    const sprite = this.getPooledSprite(layer, key);
 
+    sprite.texture = this.getImageTexture(options.image);
+    sprite.anchor.set(0);
     sprite.position.set(Math.round(options.screenX), Math.round(options.screenY));
     sprite.scale.set(options.scale ?? 1);
-    this.app.stage.addChild(sprite);
+    this.countSpriteDraw();
   }
 
   drawSprite(options: SpriteDrawOptions): void {
+    const layer = options.layer ?? 'prop';
     const frame = options.manifest.frames[options.frameIndex ?? 0];
     const scale = options.manifest.scale * (options.scale ?? 1);
-    const sprite = new Sprite({
-      texture: this.getFrameTexture(options),
-      anchor: {
-        x: frame.center.x / frame.w,
-        y: frame.center.y / frame.h,
-      },
-      roundPixels: true,
-    });
+    const key = `${layer}:sprite:${this.getFrameTextureKey(options)}`;
+    const sprite = this.getPooledSprite(layer, key);
 
+    sprite.texture = this.getFrameTexture(options);
+    sprite.anchor.set(frame.center.x / frame.w, frame.center.y / frame.h);
     sprite.position.set(Math.round(options.screenX), Math.round(options.screenY));
     sprite.scale.set(scale);
-    this.app.stage.addChild(sprite);
+    this.countSpriteDraw();
   }
 
   drawNightLighting(ambientColor: string, ambientAlpha: number, lights: RadialLightDrawOptions[]): void {
-    const overlay = new Graphics();
-    overlay.rect(0, 0, this.app.renderer.width, this.app.renderer.height);
-    overlay.fill({ color: this.parseColor(ambientColor), alpha: ambientAlpha });
-    this.app.stage.addChild(overlay);
+    this.lightingOverlay.clear();
+    this.lightingOverlay.rect(0, 0, this.app.renderer.width, this.app.renderer.height);
+    this.lightingOverlay.fill({ color: this.parseColor(ambientColor), alpha: ambientAlpha });
+    this.stats.drawCalls++;
 
     for (const light of lights) {
-      const sprite = new Sprite({
-        texture: this.getLightTexture(light.color),
-        anchor: 0.5,
-        roundPixels: true,
-      });
-
+      const key = `lighting:light:${light.color}`;
+      const sprite = this.getPooledSprite('lighting', key);
       const diameter = light.radius * 2;
+
+      sprite.texture = this.getLightTexture(light.color);
+      sprite.anchor.set(0.5);
       sprite.position.set(Math.round(light.screenX), Math.round(light.screenY));
       sprite.width = diameter;
       sprite.height = diameter;
       sprite.alpha = light.intensity;
       sprite.blendMode = 'add';
-      this.app.stage.addChild(sprite);
+      this.countSpriteDraw();
     }
   }
 
+  getRenderStats(): RenderStats {
+    let pooledSprites = 0;
+    for (const sprites of this.spritePools.values()) {
+      pooledSprites += sprites.length;
+    }
+
+    return {
+      ...this.stats,
+      pooledSprites,
+      stageChildren: this.app.stage.children.length,
+    };
+  }
+
   private getFrameTexture(options: SpriteDrawOptions): Texture {
-    const frameIndex = options.frameIndex ?? 0;
-    const frame = options.manifest.frames[frameIndex];
-    const key = `${options.image.src}:${frameIndex}:${frame.x},${frame.y},${frame.w},${frame.h}`;
+    const key = this.getFrameTextureKey(options);
     const cached = this.textureCache.get(key);
     if (cached) return cached;
 
+    const frameIndex = options.frameIndex ?? 0;
+    const frame = options.manifest.frames[frameIndex];
     const base = Texture.from(options.image);
     const texture = new Texture({
       source: base.source,
@@ -148,6 +190,71 @@ export class PixiRenderer implements IRenderer {
 
     this.textureCache.set(key, texture);
     return texture;
+  }
+
+  private getFrameTextureKey(options: SpriteDrawOptions): string {
+    const frameIndex = options.frameIndex ?? 0;
+    const frame = options.manifest.frames[frameIndex];
+    return `${options.image.src}:${frameIndex}:${frame.x},${frame.y},${frame.w},${frame.h}`;
+  }
+
+  private getImageTexture(image: HTMLImageElement | HTMLCanvasElement): Texture {
+    const key = this.getImageKey(image);
+    const cached = this.imageTextureCache.get(key);
+    if (cached) return cached;
+
+    const texture = Texture.from(image);
+    this.imageTextureCache.set(key, texture);
+    return texture;
+  }
+
+  private getImageKey(image: HTMLImageElement | HTMLCanvasElement): string {
+    if (image instanceof HTMLImageElement) {
+      return image.src;
+    }
+
+    return `canvas:${image.width}x${image.height}`;
+  }
+
+  private getPooledSprite(layer: RenderLayer, key: string): Sprite {
+    const cursor = this.poolCursors.get(key) ?? 0;
+    const pool = this.spritePools.get(key) ?? [];
+    let sprite = pool[cursor];
+
+    if (!sprite) {
+      sprite = new Sprite({ roundPixels: true });
+      pool.push(sprite);
+      this.spritePools.set(key, pool);
+      this.layers[layer].addChild(sprite);
+    }
+
+    sprite.visible = true;
+    sprite.alpha = 1;
+    sprite.blendMode = 'normal';
+    this.poolCursors.set(key, cursor + 1);
+    return sprite;
+  }
+
+  private hidePooledSprites(): void {
+    for (const sprites of this.spritePools.values()) {
+      for (const sprite of sprites) {
+        sprite.visible = false;
+      }
+    }
+  }
+
+  private countSpriteDraw(): void {
+    this.stats.drawCalls++;
+    this.stats.visibleSprites++;
+  }
+
+  private resetStats(): void {
+    this.stats = {
+      drawCalls: 0,
+      visibleSprites: 0,
+      pooledSprites: 0,
+      stageChildren: this.app.stage.children.length,
+    };
   }
 
   private getLightTexture(color: string): Texture {

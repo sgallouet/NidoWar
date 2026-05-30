@@ -1,5 +1,5 @@
 import type { IRenderer } from './IRenderer';
-import type { ImageDrawOptions, RadialLightDrawOptions, SpriteDrawOptions } from './IRenderer';
+import type { ImageDrawOptions, RadialLightDrawOptions, RenderStats, SpriteDrawOptions } from './IRenderer';
 
 /**
  * Minimal 2D Canvas renderer for early proofs.
@@ -9,6 +9,12 @@ export class Canvas2DRenderer implements IRenderer {
   private canvas: HTMLCanvasElement | null = null;
   private ctx: CanvasRenderingContext2D | null = null;
   private readonly resizeHandler = () => this.resizeCanvas();
+  private stats: RenderStats = {
+    drawCalls: 0,
+    visibleSprites: 0,
+    pooledSprites: 0,
+    stageChildren: 1,
+  };
 
   private ensureContext(): void {
     if (this.ctx) return;
@@ -45,6 +51,12 @@ export class Canvas2DRenderer implements IRenderer {
     this.ensureContext();
     this.resizeCanvas();
     const ctx = this.ctx!;
+    this.stats = {
+      drawCalls: 0,
+      visibleSprites: 0,
+      pooledSprites: 0,
+      stageChildren: 1,
+    };
     ctx.fillStyle = '#0a0a0c';
     ctx.fillRect(0, 0, this.canvas!.width, this.canvas!.height);
   }
@@ -91,6 +103,7 @@ export class Canvas2DRenderer implements IRenderer {
     ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 1;
     ctx.stroke();
+    this.stats.drawCalls++;
   }
 
   drawImage(options: ImageDrawOptions): void {
@@ -104,6 +117,7 @@ export class Canvas2DRenderer implements IRenderer {
       options.image.width * scale,
       options.image.height * scale
     );
+    this.countSpriteDraw();
   }
 
   drawSprite(options: SpriteDrawOptions): void {
@@ -123,6 +137,7 @@ export class Canvas2DRenderer implements IRenderer {
       frame.w * scale,
       frame.h * scale
     );
+    this.countSpriteDraw();
   }
 
   drawNightLighting(ambientColor: string, ambientAlpha: number, lights: RadialLightDrawOptions[]): void {
@@ -135,6 +150,7 @@ export class Canvas2DRenderer implements IRenderer {
     ctx.globalAlpha = ambientAlpha;
     ctx.fillStyle = ambientColor;
     ctx.fillRect(0, 0, this.canvas!.width, this.canvas!.height);
+    this.stats.drawCalls++;
 
     ctx.globalCompositeOperation = 'lighter';
     for (const light of lights) {
@@ -157,10 +173,20 @@ export class Canvas2DRenderer implements IRenderer {
         light.radius * 2,
         light.radius * 2
       );
+      this.countSpriteDraw();
     }
 
     ctx.globalAlpha = previousAlpha;
     ctx.globalCompositeOperation = previousComposite;
+  }
+
+  getRenderStats(): RenderStats {
+    return this.stats;
+  }
+
+  private countSpriteDraw(): void {
+    this.stats.drawCalls++;
+    this.stats.visibleSprites++;
   }
 
   private hexToRgba(hex: string, alpha: number): string {

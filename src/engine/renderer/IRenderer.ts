@@ -1,5 +1,7 @@
 import type { LoadedSpriteManifest } from '@engine/assets/AssetManifest';
 
+export type RenderLayer = 'terrain' | 'decal' | 'prop' | 'unit' | 'lighting';
+
 export interface SpriteDrawOptions {
   image: HTMLImageElement;
   manifest: LoadedSpriteManifest;
@@ -7,6 +9,7 @@ export interface SpriteDrawOptions {
   screenX: number;
   screenY: number;
   scale?: number;
+  layer?: RenderLayer;
 }
 
 export interface ImageDrawOptions {
@@ -14,6 +17,7 @@ export interface ImageDrawOptions {
   screenX: number;
   screenY: number;
   scale?: number;
+  layer?: RenderLayer;
 }
 
 export interface RadialLightDrawOptions {
@@ -22,6 +26,13 @@ export interface RadialLightDrawOptions {
   radius: number;
   color: string;
   intensity: number;
+}
+
+export interface RenderStats {
+  drawCalls: number;
+  visibleSprites: number;
+  pooledSprites: number;
+  stageChildren: number;
 }
 
 /**
@@ -35,6 +46,7 @@ export interface IRenderer {
   drawImage(options: ImageDrawOptions): void;
   drawSprite(options: SpriteDrawOptions): void;
   drawNightLighting(ambientColor: string, ambientAlpha: number, lights: RadialLightDrawOptions[]): void;
+  getRenderStats(): RenderStats;
   getCanvas(): HTMLCanvasElement | null;
   present(): void;
 }

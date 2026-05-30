@@ -7,7 +7,7 @@
  */
 
 import type { IRenderer } from './IRenderer';
-import type { RadialLightDrawOptions } from './IRenderer';
+import type { RadialLightDrawOptions, RenderLayer, RenderStats } from './IRenderer';
 import { worldToScreen, DEFAULT_TILE } from '@engine/isometric';
 import type { LoadedSpriteManifest } from '@engine/assets/AssetManifest';
 import type { Point } from '@engine/isometric';
@@ -46,7 +46,8 @@ export class IsometricRenderer {
     tileWidth: number = DEFAULT_TILE.width,
     tileHeight: number = DEFAULT_TILE.height,
     offset: Point = { x: 0, y: 0 },
-    spriteScale?: number
+    spriteScale?: number,
+    layer: RenderLayer = 'prop'
   ): void {
     const pos = worldToScreen(worldX, worldY, tileWidth, tileHeight);
     const frame = manifest.frames[frameIndex];
@@ -59,6 +60,7 @@ export class IsometricRenderer {
       screenX: pos.x + offset.x,
       screenY: pos.y + offset.y,
       scale: renderScale,
+      layer,
     });
   }
 
@@ -66,13 +68,15 @@ export class IsometricRenderer {
     image: HTMLImageElement | HTMLCanvasElement,
     screenX: number,
     screenY: number,
-    scale = 1
+    scale = 1,
+    layer: RenderLayer = 'terrain'
   ): void {
     this.inner.drawImage({
       image,
       screenX,
       screenY,
       scale,
+      layer,
     });
   }
 
@@ -82,6 +86,10 @@ export class IsometricRenderer {
     lights: RadialLightDrawOptions[]
   ): void {
     this.inner.drawNightLighting(ambientColor, ambientAlpha, lights);
+  }
+
+  getRenderStats(): RenderStats {
+    return this.inner.getRenderStats();
   }
 
   getCanvas(): HTMLCanvasElement | null {

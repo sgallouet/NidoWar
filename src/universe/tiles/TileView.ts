@@ -39,7 +39,8 @@ export class TileView {
       tileWidth,
       tileHeight,
       offset,
-      (tileWidth / this.manifest.frames[0].w) * decal.scale
+      (tileWidth / this.manifest.frames[0].w) * decal.scale,
+      'decal'
     );
   }
 
@@ -60,7 +61,8 @@ export class TileView {
       tileWidth,
       tileHeight,
       offset,
-      (tileWidth / this.manifest.frames[0].w) * prop.scale
+      (tileWidth / this.manifest.frames[0].w) * prop.scale,
+      'prop'
     );
   }
 
@@ -81,7 +83,8 @@ export class TileView {
       tileWidth,
       tileHeight,
       offset,
-      tileWidth / this.manifest.frames[0].w
+      tileWidth / this.manifest.frames[0].w,
+      'prop'
     );
   }
 }
