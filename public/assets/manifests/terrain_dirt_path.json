@@ -1,9 +1,9 @@
 {
   "name": "terrain_dirt_path",
-  "image": "sprites/terrain_dirt_path_placeholder.png",
-  "frameSize": { "w": 128, "h": 128 },
+  "image": "sprites/terrain_dirt_path.png",
+  "frameSize": { "w": 1254, "h": 1254 },
   "frames": [
-    { "x": 0, "y": 0, "w": 128, "h": 128, "duration": 0, "center": { "x": 64, "y": 64 } }
+    { "x": 0, "y": 0, "w": 1254, "h": 1254, "duration": 0, "center": { "x": 627, "y": 627 } }
   ],
   "scale": 1,
   "anchor": { "x": 0.5, "y": 0.5 }

@@ -1,0 +1,17 @@
+{
+  "name": "grass_dirt_transitions",
+  "image": "sprites/grass_dirt_transitions.png",
+  "frameSize": { "w": 543, "h": 362 },
+  "frames": [
+    { "x": 0, "y": 0, "w": 543, "h": 362, "duration": 0, "center": { "x": 272, "y": 240 } },
+    { "x": 543, "y": 0, "w": 543, "h": 362, "duration": 0, "center": { "x": 272, "y": 240 } },
+    { "x": 1086, "y": 0, "w": 543, "h": 362, "duration": 0, "center": { "x": 272, "y": 240 } },
+    { "x": 1629, "y": 0, "w": 543, "h": 362, "duration": 0, "center": { "x": 272, "y": 240 } },
+    { "x": 0, "y": 362, "w": 543, "h": 362, "duration": 0, "center": { "x": 272, "y": 240 } },
+    { "x": 543, "y": 362, "w": 543, "h": 362, "duration": 0, "center": { "x": 272, "y": 240 } },
+    { "x": 1086, "y": 362, "w": 543, "h": 362, "duration": 0, "center": { "x": 272, "y": 240 } },
+    { "x": 1629, "y": 362, "w": 543, "h": 362, "duration": 0, "center": { "x": 272, "y": 240 } }
+  ],
+  "scale": 0.13,
+  "anchor": { "x": 0.5, "y": 0.66 }
+}

@@ -56,6 +56,8 @@ export class IsometricViewport {
   private selectedTile: { x: number; y: number } | null = null;
   private readonly debugPerf = typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('debug');
+  private readonly nightLighting = typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).has('night');
   private frameCount = 0;
 
   constructor(options: ViewportOptions = {}) {
@@ -126,6 +128,7 @@ export class IsometricViewport {
       ['meadow_decals', '/assets/manifests/world_meadow_decals.json'],
       ['path_decals', '/assets/manifests/world_path_decals.json'],
       ['forest_decals', '/assets/manifests/world_forest_decals.json'],
+      ['grass_dirt_transitions', '/assets/manifests/grass_dirt_transitions.json'],
       ['world_props', '/assets/manifests/world_props_v1.json'],
     ];
     const atlases = new Map<string, TileSpriteAtlas>();
@@ -204,11 +207,13 @@ export class IsometricViewport {
       this.tileView.drawTorch(torch, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
     }
 
-    this.isoRenderer.drawNightLighting(
-      '#071025',
-      0.68,
-      this.getLights(torches, origin, tileWidth, tileHeight)
-    );
+    if (this.nightLighting) {
+      this.isoRenderer.drawNightLighting(
+        '#071025',
+        0.68,
+        this.getLights(torches, origin, tileWidth, tileHeight)
+      );
+    }
 
     this.isoRenderer.present();
     this.publishPhase1Stats({

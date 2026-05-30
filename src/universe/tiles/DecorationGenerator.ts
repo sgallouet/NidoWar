@@ -19,6 +19,19 @@ export class DecorationGenerator {
       const edge = this.terrain.getDirtEdge(tile.x, tile.y);
       if (blend.water > 0.36) continue;
 
+      if (edge > 0.58 && hash(tile.x, tile.y, 137) % 100 < 32) {
+        decals.push({
+          id: id++,
+          assetKey: 'grass_dirt_transitions',
+          tileX: tile.x,
+          tileY: tile.y,
+          offsetX: this.pickOffset(tile.x, tile.y, 139) * 0.45,
+          offsetY: this.pickOffset(tile.x, tile.y, 141) * 0.45,
+          frameIndex: this.pickTransitionFrame(tile.x, tile.y),
+          scale: 0.92 + (hash(tile.x, tile.y, 143) % 16) / 100,
+        });
+      }
+
       const flowerCluster = this.getClusterInfluence(tile.x, tile.y, 101, 11);
       const grassCluster = this.getClusterInfluence(tile.x, tile.y, 211, 9);
       const forestCluster = this.getClusterInfluence(tile.x, tile.y, 241, 8);
@@ -156,6 +169,15 @@ export class DecorationGenerator {
     if (forest > 0.42 && roll < 78) return 'forest_decals';
     if ((dirt > 0.36 || edge > 0.52) && roll < 70) return 'path_decals';
     return 'meadow_decals';
+  }
+
+  private pickTransitionFrame(x: number, y: number): number {
+    const dx = this.terrain.getDirtBlend(x + 1, y) - this.terrain.getDirtBlend(x - 1, y);
+    const dy = this.terrain.getDirtBlend(x, y + 1) - this.terrain.getDirtBlend(x, y - 1);
+    const angle = Math.atan2(dy, dx);
+    const normalized = (angle + Math.PI * 2) % (Math.PI * 2);
+
+    return Math.floor((normalized / (Math.PI * 2)) * 8) % 8;
   }
 
   private getClusterInfluence(x: number, y: number, seed: number, count: number): number {
