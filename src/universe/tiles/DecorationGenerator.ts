@@ -27,7 +27,7 @@ export class DecorationGenerator {
           tileY: tile.y,
           offsetX: this.pickOffset(tile.x, tile.y, 139) * 0.45,
           offsetY: this.pickOffset(tile.x, tile.y, 141) * 0.45,
-          frameIndex: this.pickTransitionFrame(tile.x, tile.y),
+          frameIndex: this.pickTransitionFrame(tile.x, tile.y, edge),
           scale: 0.92 + (hash(tile.x, tile.y, 143) % 16) / 100,
         });
       }
@@ -74,7 +74,7 @@ export class DecorationGenerator {
 
       props.push({
         id: id++,
-        assetKey: 'world_props',
+        assetKey: 'rock_props',
         tileX: tile.x,
         tileY: tile.y,
         offsetX: this.pickOffset(tile.x, tile.y, 337) * 0.82,
@@ -127,26 +127,10 @@ export class DecorationGenerator {
   ): number {
     const roll = hash(x, y, 379) % 100;
 
-    if (landmark > 0.66 && roll < 42) {
-      return 24 + (hash(x, y, 381) % 8);
-    }
-
-    if (forest > 0.45 || grove > 0.64) {
-      if (roll < 42) return 8 + (hash(x, y, 397) % 8);
-      if (roll < 78) return 16 + (hash(x, y, 401) % 8);
-      return 4 + (hash(x, y, 403) % 4);
-    }
-
-    if (edge > 0.5) {
-      if (roll < 36) return 4 + (hash(x, y, 383) % 4);
-      if (roll < 68) return 16 + (hash(x, y, 389) % 8);
-      return hash(x, y, 391) % 4;
-    }
-
-    if (roll < 36) return 8 + (hash(x, y, 409) % 8);
-    if (roll < 62) return hash(x, y, 419) % 4;
-    if (roll < 84) return 16 + (hash(x, y, 421) % 8);
-    return 24 + (hash(x, y, 423) % 8);
+    if (landmark > 0.66 && roll < 48) return 8 + (hash(x, y, 381) % 8);
+    if (forest > 0.45 || grove > 0.64) return 4 + (hash(x, y, 397) % 12);
+    if (edge > 0.5) return hash(x, y, 389) % 12;
+    return hash(x, y, 386) % 16;
   }
 
   private getDecalChance(
@@ -171,13 +155,14 @@ export class DecorationGenerator {
     return 'meadow_decals';
   }
 
-  private pickTransitionFrame(x: number, y: number): number {
+  private pickTransitionFrame(x: number, y: number, edge: number): number {
     const dx = this.terrain.getDirtBlend(x + 1, y) - this.terrain.getDirtBlend(x - 1, y);
     const dy = this.terrain.getDirtBlend(x, y + 1) - this.terrain.getDirtBlend(x, y - 1);
     const angle = Math.atan2(dy, dx);
     const normalized = (angle + Math.PI * 2) % (Math.PI * 2);
+    const widthOffset = edge > 0.76 && hash(x, y, 146) % 100 < 54 ? 8 : 0;
 
-    return Math.floor((normalized / (Math.PI * 2)) * 8) % 8;
+    return widthOffset + Math.floor((normalized / (Math.PI * 2)) * 8) % 8;
   }
 
   private getClusterInfluence(x: number, y: number, seed: number, count: number): number {

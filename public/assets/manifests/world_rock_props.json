@@ -1,6 +1,6 @@
 {
-  "name": "grass_dirt_transitions",
-  "image": "sprites/grass_dirt_transitions.png",
+  "name": "world_rock_props",
+  "image": "sprites/world_rock_props.png",
   "frameSize": {
     "w": 362,
     "h": 271
@@ -14,7 +14,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -25,7 +25,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -36,7 +36,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -47,7 +47,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -58,7 +58,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -69,7 +69,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -80,7 +80,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -91,7 +91,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -102,7 +102,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -113,7 +113,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -124,7 +124,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -135,7 +135,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -146,7 +146,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -157,7 +157,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -168,7 +168,7 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     },
     {
@@ -179,13 +179,13 @@
       "duration": 0,
       "center": {
         "x": 181,
-        "y": 181
+        "y": 236
       }
     }
   ],
-  "scale": 0.19,
+  "scale": 0.22,
   "anchor": {
     "x": 0.5,
-    "y": 0.67
+    "y": 0.87
   }
 }

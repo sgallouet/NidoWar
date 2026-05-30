@@ -129,7 +129,7 @@ export class IsometricViewport {
       ['path_decals', '/assets/manifests/world_path_decals.json'],
       ['forest_decals', '/assets/manifests/world_forest_decals.json'],
       ['grass_dirt_transitions', '/assets/manifests/grass_dirt_transitions.json'],
-      ['world_props', '/assets/manifests/world_props_v1.json'],
+      ['rock_props', '/assets/manifests/world_rock_props.json'],
     ];
     const atlases = new Map<string, TileSpriteAtlas>();
 
