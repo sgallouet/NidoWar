@@ -30,8 +30,10 @@ export class PixiRenderer implements IRenderer {
   private textureCache = new Map<string, Texture>();
   private lightTextureCache = new Map<string, Texture>();
   private imageTextureCache = new Map<string, Texture>();
+  private canvasImageIds = new WeakMap<HTMLCanvasElement, number>();
   private spritePools = new Map<string, Sprite[]>();
   private poolCursors = new Map<string, number>();
+  private nextCanvasImageId = 1;
   private stats: RenderStats = {
     drawCalls: 0,
     visibleSprites: 0,
@@ -213,7 +215,13 @@ export class PixiRenderer implements IRenderer {
       return image.src;
     }
 
-    return `canvas:${image.width}x${image.height}`;
+    let id = this.canvasImageIds.get(image);
+    if (!id) {
+      id = this.nextCanvasImageId++;
+      this.canvasImageIds.set(image, id);
+    }
+
+    return `canvas:${id}:${image.width}x${image.height}`;
   }
 
   private getPooledSprite(layer: RenderLayer, key: string): Sprite {
