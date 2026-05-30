@@ -2,6 +2,7 @@ import { DecorationGenerator } from './DecorationGenerator';
 import { LightSourceGenerator } from './LightSourceGenerator';
 import { TerrainGenerator } from './TerrainGenerator';
 import { createTile, type TerrainType, type TileData, type TileDecalData, type TileLightData } from './TileData';
+import type { TerrainBlend } from './TerrainMaterial';
 
 export class MapModel {
   private readonly tiles: TileData[];
@@ -49,6 +50,10 @@ export class MapModel {
 
   getDirtBlend(x: number, y: number): number {
     return this.terrain.getDirtBlend(x, y);
+  }
+
+  getTerrainBlend(x: number, y: number): TerrainBlend {
+    return this.terrain.getTerrainBlend(x, y);
   }
 
   private createTiles(fill: TerrainType): TileData[] {

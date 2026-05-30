@@ -1,5 +1,6 @@
 import { MapModel } from './MapModel';
 import type { TileData, TileDecalData, TileLightData } from './TileData';
+import type { TerrainBlend } from './TerrainMaterial';
 
 export class TileGrid {
   readonly map: MapModel;
@@ -30,5 +31,9 @@ export class TileGrid {
 
   getDirtBlend(x: number, y: number): number {
     return this.map.getDirtBlend(x, y);
+  }
+
+  getTerrainBlend(x: number, y: number): TerrainBlend {
+    return this.map.getTerrainBlend(x, y);
   }
 }

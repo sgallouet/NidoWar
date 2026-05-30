@@ -41,6 +41,13 @@ Every sprite or spritesheet must have a matching `.json` sidecar file that defin
 - All drawing goes through a renderer or view object that reads the manifest.
 - This allows art to be replaced without touching gameplay code.
 
+## Terrain Material Manifests
+- Terrain materials also use the sprite manifest format, even when they are opaque seamless textures.
+- Phase 2 terrain material ids are `grass`, `dirt`, `cobblestone`, `forest`, and `water`.
+- Source files may be placeholder PNGs while the pipeline is under construction, but replacement art must keep the manifest name and material id stable unless the code and plan are updated together.
+- Material textures should be seamless square PNGs. Current placeholders are 128x128; final art may use 256x256 or 512x512 if performance evidence stays healthy.
+- Transition sprites, prop atlases, light source sprites, and contact shadows must remain transparent and manifest-backed.
+
 ## Asset Prompt Source
 - Use `docs/ASSET_PROMPTS.md` as the starting prompt deck for generated sprites, terrain textures, decals, world props, battle arena tiles, and unit sprites.
 - Prompts must describe the NidoWar art direction directly instead of naming another game or artist as the requested style.

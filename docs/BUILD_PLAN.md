@@ -1,6 +1,6 @@
 # NidoWarWeb4X - Build Plan
 
-**Status**: Phase 0 Complete (2026-04). Phase 1 Code Complete (2026-05-30). Next: Phase 2 art direction reset and world map art pipeline.
+**Status**: Phase 0 Complete (2026-04). Phase 1 Code Complete (2026-05-30). Phase 2 world map art pipeline started with placeholder material assets.
 
 **Guiding Principles** (from CODE_DESIGN.md + user instructions)
 - Every change must stay inside the strict segregation (engine / gameplay / universe/*).
@@ -118,9 +118,9 @@
 - Each art slice requires in-game screenshot QA before the slice is accepted.
 
 **Suggested slice order**:
-- **2.0 Art bible lock** - Review `ART_DIRECTION.md` and `ASSET_PROMPTS.md` against current screenshots. Accept the NidoWar art target before generating assets.
-- **2.1 Asset pipeline upgrade** - Add manifest conventions for terrain material packs, transition sheets, prop atlases, contact shadows, and light metadata. Add small validation/checklist docs if needed.
-- **2.2 World terrain material kit** - Replace the current grass/dust-only surface with a richer material kit: grass meadow, reddish dirt, cobblestone road, forest floor, shallow water, and transitions.
+- ~~2.0~~ **DONE (2026-05-30)** - Art bible target accepted for implementation: `ART_DIRECTION.md` + `ASSET_PROMPTS.md` are the Phase 2 visual source of truth.
+- ~~2.1~~ **DONE (2026-05-30)** - First asset pipeline upgrade: terrain materials now load through manifest-backed material ids (`grass`, `dirt`, `cobblestone`, `forest`, `water`) instead of a hardcoded grass/dust pair.
+- **2.2 IN PROGRESS (2026-05-30)** - Placeholder terrain material kit added for grass meadow, reddish dirt path, cobblestone road, forest floor, and shallow water. These are deliberately temporary PNGs that can be replaced by generated art without source changes.
 - **2.3 Terrain transition renderer** - Support irregular path/terrain edges from generated transition sprites or masks so roads and dirt patches no longer look like soft blobs.
 - **2.4 World decal and prop atlas v1** - Integrate meadow decals, forest floor decals, rocks, shrubs, tall grass, tree clusters, torches, ruins, chests, and small interactable props.
 - **2.5 Tall occluder/depth pass** - Add layered forests, cliff/mountain edges, and building-height props with correct depth sorting, contact shadows, and optional occlusion rules.
@@ -134,6 +134,12 @@
 - **2.13 Phase 2 visual/perf gate** - Record desktop and mobile screenshots, render stats, draw calls, visible object counts, and side-by-side visual review notes against the art direction.
 
 **Exit**: The player can move a hero around a visually credible NidoWar world map with visible movement budget. The map no longer reads as prototype art. It demonstrates the final asset pipeline: dense terrain materials, transitions, clustered props, tall occluders, landmarks, lighting, and readable hero sprites. No economy or fog yet.
+
+**Phase 2 Working Notes**
+- 2026-05-30: `npm run build` passed after adding the placeholder terrain material pack.
+- 2026-05-30: Browser stat sample after reload: initial cached terrain surface bake 603.2ms, then panning max 2.0ms across 4 drag samples. Last pan sample: 1036 visible tiles, 35 decals, 21 props, 6 torches, 70 draw calls, 69 visible sprites, 74 pooled sprites, 5 stage children.
+- 2026-05-30: Screenshot capture through the in-app browser timed out and should be retried after the next visual slice.
+- Follow-up performance note: the one-time terrain surface bake should move off the main thread or into an idle/preload job before Phase 2 close.
 
 ---
 

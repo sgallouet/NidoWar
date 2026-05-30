@@ -1,0 +1,10 @@
+{
+  "name": "terrain_forest_floor",
+  "image": "sprites/terrain_forest_floor_placeholder.png",
+  "frameSize": { "w": 128, "h": 128 },
+  "frames": [
+    { "x": 0, "y": 0, "w": 128, "h": 128, "duration": 0, "center": { "x": 64, "y": 64 } }
+  ],
+  "scale": 1,
+  "anchor": { "x": 0.5, "y": 0.5 }
+}

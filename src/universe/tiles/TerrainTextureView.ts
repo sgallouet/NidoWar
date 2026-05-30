@@ -1,6 +1,7 @@
 import { screenToWorld, worldToScreen, type Point } from '@engine/isometric';
 import type { IsometricRenderer } from '@engine/renderer/IsometricRenderer';
 import type { TileGrid } from './TileGrid';
+import type { TerrainBlend, TerrainMaterialId, TerrainMaterialSet } from './TerrainMaterial';
 
 interface TerrainBounds {
   minX: number;
@@ -15,14 +16,26 @@ interface TextureSampler {
   height: number;
 }
 
+type TerrainSamplers = Record<TerrainMaterialId, TextureSampler>;
+
+const MATERIAL_IDS: TerrainMaterialId[] = ['grass', 'dirt', 'cobblestone', 'forest', 'water'];
+
+const MATERIAL_OFFSETS: Record<TerrainMaterialId, { x: number; y: number }> = {
+  grass: { x: 0, y: 0 },
+  dirt: { x: 37, y: -19 },
+  cobblestone: { x: -53, y: 41 },
+  forest: { x: 71, y: 83 },
+  water: { x: -97, y: -29 },
+};
+
 export class TerrainTextureView {
   private readonly bounds: TerrainBounds;
+  private readonly surfaceResolution = 0.35;
   private surface: HTMLCanvasElement | null = null;
 
   constructor(
     private readonly grid: TileGrid,
-    private readonly grassTexture: HTMLImageElement,
-    private readonly dustTexture: HTMLImageElement,
+    private readonly materials: TerrainMaterialSet,
     private readonly tileWidth: number,
     private readonly tileHeight: number
   ) {
@@ -41,7 +54,7 @@ export class TerrainTextureView {
       surface,
       origin.x + (this.bounds.minX - cameraOffset.x) * zoom,
       origin.y + (this.bounds.minY - cameraOffset.y) * zoom,
-      zoom,
+      zoom / this.surfaceResolution,
       'terrain'
     );
   }
@@ -49,8 +62,8 @@ export class TerrainTextureView {
   private getSurface(): HTMLCanvasElement {
     if (this.surface) return this.surface;
 
-    const width = Math.ceil(this.bounds.maxX - this.bounds.minX);
-    const height = Math.ceil(this.bounds.maxY - this.bounds.minY);
+    const width = Math.ceil((this.bounds.maxX - this.bounds.minX) * this.surfaceResolution);
+    const height = Math.ceil((this.bounds.maxY - this.bounds.minY) * this.surfaceResolution);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -59,13 +72,12 @@ export class TerrainTextureView {
     if (!ctx) throw new Error('[TerrainTextureView] Failed to create terrain canvas');
 
     const pixels = ctx.createImageData(width, height);
-    const grass = this.createSampler(this.grassTexture);
-    const dust = this.createSampler(this.dustTexture);
+    const samplers = this.createSamplers();
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const screenX = x + this.bounds.minX;
-        const screenY = y + this.bounds.minY;
+        const screenX = x / this.surfaceResolution + this.bounds.minX;
+        const screenY = y / this.surfaceResolution + this.bounds.minY;
         const world = screenToWorld(screenX, screenY, this.tileWidth, this.tileHeight);
         const index = (y * width + x) * 4;
 
@@ -74,28 +86,13 @@ export class TerrainTextureView {
           continue;
         }
 
-        const blend = this.grid.getDirtBlend(world.x, world.y);
-        const edgeBand = 1 - Math.min(1, Math.abs(blend - 0.36) / 0.36);
-        const broadGrassPatch = this.valueNoise(world.x * 0.08, world.y * 0.08, 11);
-        const coolPatch = this.valueNoise(world.x * 0.16 + 17, world.y * 0.16 - 9, 23);
-        const finePatch = this.valueNoise(screenX * 0.04, screenY * 0.04, 37);
-        const speckle = this.hash(screenX, screenY, 53) / 0xffffffff;
-        const grassColor = this.sample(grass, screenX, screenY, [126, 181, 42]);
-        const dustColor = this.sample(dust, screenX + 37, screenY - 19, [166, 114, 66]);
-        const dryGrassColor: [number, number, number] = [154, 159, 57];
-        const darkGrassColor: [number, number, number] = [82, 139, 45];
-        const coolShadowColor: [number, number, number] = [89, 151, 72];
-        const edgeDustColor: [number, number, number] = [144, 108, 63];
-        let color = grassColor;
-
-        color = this.mixColor(color, darkGrassColor, Math.max(0, broadGrassPatch - 0.55) * 0.28);
-        color = this.mixColor(color, coolShadowColor, Math.max(0, coolPatch - 0.62) * 0.18);
-        color = this.lighten(color, (finePatch - 0.5) * 10);
-        color = this.mixColor(color, dryGrassColor, edgeBand * 0.48);
-
-        const dirtAmount = this.smoothstep(0.28, 0.82, blend);
-        color = this.mixColor(color, dustColor, dirtAmount);
-        color = this.mixColor(color, edgeDustColor, edgeBand * (speckle > 0.82 ? 0.42 : 0.08));
+        const blend = this.grid.getTerrainBlend(world.x, world.y);
+        const color = this.gradeTerrainColor(
+          this.sampleBlend(samplers, blend, screenX, screenY),
+          blend,
+          screenX,
+          screenY
+        );
 
         pixels.data[index] = color[0];
         pixels.data[index + 1] = color[1];
@@ -125,6 +122,16 @@ export class TerrainTextureView {
     };
   }
 
+  private createSamplers(): TerrainSamplers {
+    return {
+      grass: this.createSampler(this.materials.grass.image),
+      dirt: this.createSampler(this.materials.dirt.image),
+      cobblestone: this.createSampler(this.materials.cobblestone.image),
+      forest: this.createSampler(this.materials.forest.image),
+      water: this.createSampler(this.materials.water.image),
+    };
+  }
+
   private createSampler(image: HTMLImageElement): TextureSampler {
     const canvas = document.createElement('canvas');
     canvas.width = image.naturalWidth || image.width;
@@ -143,6 +150,56 @@ export class TerrainTextureView {
     };
   }
 
+  private sampleBlend(
+    samplers: TerrainSamplers,
+    blend: TerrainBlend,
+    screenX: number,
+    screenY: number
+  ): [number, number, number] {
+    const color: [number, number, number] = [0, 0, 0];
+
+    for (const id of MATERIAL_IDS) {
+      const weight = blend[id];
+      if (weight <= 0) continue;
+
+      const offset = MATERIAL_OFFSETS[id];
+      const sample = this.sample(samplers[id], screenX + offset.x, screenY + offset.y);
+      color[0] += sample[0] * weight;
+      color[1] += sample[1] * weight;
+      color[2] += sample[2] * weight;
+    }
+
+    return [this.clamp(color[0]), this.clamp(color[1]), this.clamp(color[2])];
+  }
+
+  private gradeTerrainColor(
+    color: [number, number, number],
+    blend: TerrainBlend,
+    screenX: number,
+    screenY: number
+  ): [number, number, number] {
+    const transition = 1 - Math.max(...MATERIAL_IDS.map((id) => blend[id]));
+    const broadPatch = this.valueNoise(screenX * 0.013, screenY * 0.013, 11);
+    const finePatch = this.valueNoise(screenX * 0.045, screenY * 0.045, 37);
+    const speckle = this.hash(screenX, screenY, 53) / 0xffffffff;
+    let result = color;
+
+    result = this.lighten(result, (finePatch - 0.5) * 10);
+    result = this.mixColor(result, [57, 86, 73], Math.max(0, broadPatch - 0.58) * 0.22);
+    result = this.mixColor(result, [177, 150, 78], transition * 0.22);
+
+    if (blend.water > 0.2) {
+      result = this.mixColor(result, [38, 83, 96], blend.water * 0.18);
+      result = this.lighten(result, speckle > 0.965 ? 42 : 0);
+    }
+
+    if (blend.cobblestone > 0.28) {
+      result = this.mixColor(result, [193, 178, 138], blend.cobblestone * 0.12);
+    }
+
+    return result;
+  }
+
   private isInsideMap(x: number, y: number): boolean {
     return x >= -0.5 &&
       y >= -0.5 &&
@@ -150,24 +207,16 @@ export class TerrainTextureView {
       y <= this.grid.map.height - 0.5;
   }
 
-  private sample(
-    texture: TextureSampler,
-    x: number,
-    y: number,
-    fallback: [number, number, number]
-  ): [number, number, number] {
-    if (texture.width <= 0 || texture.height <= 0) return fallback;
-
+  private sample(texture: TextureSampler, x: number, y: number): [number, number, number] {
     const sampleX = this.wrap(Math.floor(x), texture.width);
     const sampleY = this.wrap(Math.floor(y), texture.height);
     const index = (sampleY * texture.width + sampleX) * 4;
-    const color: [number, number, number] = [
+
+    return [
       texture.data[index],
       texture.data[index + 1],
       texture.data[index + 2],
     ];
-
-    return color.every(Number.isFinite) ? color : fallback;
   }
 
   private wrap(value: number, size: number): number {
@@ -211,11 +260,6 @@ export class TerrainTextureView {
     const d = this.hash(x0 + 1, y0 + 1, seed) / 0xffffffff;
 
     return this.lerp(this.lerp(a, b, xBlend), this.lerp(c, d, xBlend), yBlend);
-  }
-
-  private smoothstep(edge0: number, edge1: number, value: number): number {
-    const amount = Math.max(0, Math.min(1, (value - edge0) / (edge1 - edge0)));
-    return amount * amount * (3 - 2 * amount);
   }
 
   private fade(value: number): number {

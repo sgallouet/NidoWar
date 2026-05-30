@@ -19,6 +19,7 @@ import { PixiRenderer } from '../renderer/PixiRenderer';
 import type { IRenderer } from '../renderer/IRenderer';
 import type { TileData, TileDecalData, TileLightData } from '../../universe/tiles/TileData';
 import type { RadialLightDrawOptions } from '../renderer/IRenderer';
+import type { TerrainMaterial, TerrainMaterialId, TerrainMaterialSet } from '../../universe/tiles/TerrainMaterial';
 
 interface Phase1RenderStats {
   frameMs: number;
@@ -80,22 +81,18 @@ export class IsometricViewport {
     this.decalManifest = await loadSpriteManifest('/assets/manifests/grass_decals.json');
     this.propManifest = await loadSpriteManifest('/assets/manifests/terrain_props.json');
     this.torchManifest = await loadSpriteManifest('/assets/manifests/torch.json');
-    const grassTextureManifest = await loadSpriteManifest('/assets/manifests/terrain_grass_texture.json');
-    const dustTextureManifest = await loadSpriteManifest('/assets/manifests/terrain_dust_texture.json');
+    const terrainMaterials = await this.loadTerrainMaterials();
 
     const decalImageUrl = `/assets/${this.decalManifest.image}`;
     const propImageUrl = `/assets/${this.propManifest.image}`;
     const torchImageUrl = `/assets/${this.torchManifest.image}`;
-    const grassTexture = await loadImage(`/assets/${grassTextureManifest.image}`);
-    const dustTexture = await loadImage(`/assets/${dustTextureManifest.image}`);
     const decalImage = await loadImage(decalImageUrl);
     const propImage = await loadImage(propImageUrl);
     const torchImage = await loadImage(torchImageUrl);
     this.syncTileSizeFromManifest();
     this.terrainView = new TerrainTextureView(
       this.grid,
-      grassTexture,
-      dustTexture,
+      terrainMaterials,
       this.tileWidth,
       this.tileHeight
     );
@@ -117,6 +114,28 @@ export class IsometricViewport {
     this.render();
 
     console.log('[IsometricViewport] Started. Drag to pan, wheel/pinch to zoom, tap to pick.');
+  }
+
+  private async loadTerrainMaterials(): Promise<TerrainMaterialSet> {
+    const entries: Array<[TerrainMaterialId, string]> = [
+      ['grass', '/assets/manifests/terrain_grass_meadow.json'],
+      ['dirt', '/assets/manifests/terrain_dirt_path.json'],
+      ['cobblestone', '/assets/manifests/terrain_cobblestone_road.json'],
+      ['forest', '/assets/manifests/terrain_forest_floor.json'],
+      ['water', '/assets/manifests/terrain_shallow_water.json'],
+    ];
+    const materials = await Promise.all(entries.map(([id, manifestUrl]) => (
+      this.loadTerrainMaterial(id, manifestUrl)
+    )));
+
+    return Object.fromEntries(materials.map((material) => [material.id, material])) as TerrainMaterialSet;
+  }
+
+  private async loadTerrainMaterial(id: TerrainMaterialId, manifestUrl: string): Promise<TerrainMaterial> {
+    const manifest = await loadSpriteManifest(manifestUrl);
+    const image = await loadImage(`/assets/${manifest.image}`);
+
+    return { id, image };
   }
 
   private wireInput(): void {
