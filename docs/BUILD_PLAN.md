@@ -1,12 +1,14 @@
 # NidoWarWeb4X - Build Plan
 
-**Status**: Phase 0 Complete (2026-04). Phase 1 Code Complete (2026-05-30). Next: optional physical-device QA, then Phase 2 hero/army visual foundations.
+**Status**: Phase 0 Complete (2026-04). Phase 1 Code Complete (2026-05-30). Next: Phase 2 art direction reset and world map art pipeline.
 
 **Guiding Principles** (from CODE_DESIGN.md + user instructions)
 - Every change must stay inside the strict segregation (engine / gameplay / universe/*).
 - Every file must stay comfortably under 800 lines. Refactor immediately if approaching limit.
 - Performance work (async, culling, off-main) starts early, not bolted on later.
 - Art always goes through JSON manifest (ART_SPEC.md). No hard-coded sprite coords.
+- Art direction is now gated by `docs/ART_DIRECTION.md`: original high-detail modern isometric pixel fantasy strategy art, not flat prototype terrain.
+- Asset generation prompts live in `docs/ASSET_PROMPTS.md` and must avoid copying named commercial games while matching the requested quality bar.
 - Phase completion requires evidence: build result, visual QA, and relevant performance/debug stats.
 - We only proceed to the next step after the current step is reviewed and accepted.
 - Use the project skill (/nido-plan) to keep this document updated and to generate the next micro-step details.
@@ -104,15 +106,34 @@
 
 ---
 
-## Phase 2: Heroes, Armies & Basic Movement
+## Phase 2: Art Direction Reset, World Map Kit, Heroes & Basic Movement
 
-1. Hero entity (universe/heroes/) — visual only at first.
-2. Army composition model (universe/armies/) — hero + hidden unit stack. Map only shows hero sprite.
-3. Movement points per turn + simple pathfinding (A* on tiles, async in Web Worker).
-4. "Move hero" command from input → gameplay/movement/ system.
-5. End-of-turn deduction of movement points. Limited actions.
+**Goal**: Replace the Phase 1 prototype look with the real NidoWar visual pipeline before adding movement depth. The map must move toward a dense, authored, high-detail modern isometric pixel fantasy strategy look: layered terrain materials, irregular paths, tall forests/cliffs/props, landmarks, warm/cool lighting, readable heroes, and manifest-driven asset packs.
 
-**Exit**: Player can move a hero around the map with visible movement budget. Pathing feels good. No economy or fog yet.
+**Non-negotiable visual bar**:
+- The game must not continue with flat terrain plus sparse decals.
+- World map, hero sprites, future units, battle arenas, and UI-adjacent icons must follow `docs/ART_DIRECTION.md`.
+- Prompts and asset batches must come from `docs/ASSET_PROMPTS.md` or be added there before use.
+- Reference screenshots are quality and density references only. Do not clone their exact sprites, UI, buildings, map layouts, or faction identities.
+- Each art slice requires in-game screenshot QA before the slice is accepted.
+
+**Suggested slice order**:
+- **2.0 Art bible lock** - Review `ART_DIRECTION.md` and `ASSET_PROMPTS.md` against current screenshots. Accept the NidoWar art target before generating assets.
+- **2.1 Asset pipeline upgrade** - Add manifest conventions for terrain material packs, transition sheets, prop atlases, contact shadows, and light metadata. Add small validation/checklist docs if needed.
+- **2.2 World terrain material kit** - Replace the current grass/dust-only surface with a richer material kit: grass meadow, reddish dirt, cobblestone road, forest floor, shallow water, and transitions.
+- **2.3 Terrain transition renderer** - Support irregular path/terrain edges from generated transition sprites or masks so roads and dirt patches no longer look like soft blobs.
+- **2.4 World decal and prop atlas v1** - Integrate meadow decals, forest floor decals, rocks, shrubs, tall grass, tree clusters, torches, ruins, chests, and small interactable props.
+- **2.5 Tall occluder/depth pass** - Add layered forests, cliff/mountain edges, and building-height props with correct depth sorting, contact shadows, and optional occlusion rules.
+- **2.6 Lighting and color grade pass** - Replace the current blunt night overlay with a richer lighting model: warm torch/window cores, soft falloff, cool ambient shadows, directional day shadows, and biome-specific grading.
+- **2.7 World landmark kit v1** - Add original NidoWar structures: small house, guard tower, castle gate segment, mine entrance, magic shrine, campfire, and resource nodes.
+- **2.8 Hero map sprite v1** - Add `universe/heroes/` with visual-only hero model/view, idle sprite, selection ring, banner, and manifest-driven anchor.
+- **2.9 Army visual shell** - Add `universe/armies/` model with hero + hidden unit stack. The world map still shows only the hero/army leader sprite.
+- **2.10 Movement preview visuals** - Add movement path dots, reachable markers, invalid marker, and selection state before rules-heavy pathfinding.
+- **2.11 Async pathfinding and movement** - Add simple A* in an engine worker/job path, then gameplay movement command in `gameplay/movement/`.
+- **2.12 Movement budget** - Add movement points per turn and end-of-turn deduction. Keep economy/fog out of scope.
+- **2.13 Phase 2 visual/perf gate** - Record desktop and mobile screenshots, render stats, draw calls, visible object counts, and side-by-side visual review notes against the art direction.
+
+**Exit**: The player can move a hero around a visually credible NidoWar world map with visible movement budget. The map no longer reads as prototype art. It demonstrates the final asset pipeline: dense terrain materials, transitions, clustered props, tall occluders, landmarks, lighting, and readable hero sprites. No economy or fog yet.
 
 ---
 
@@ -166,11 +187,14 @@
 
 ## Phase 8: Battle Mode Entry + Tactical Stub
 
-- Detect "hero moves onto enemy hero tile" → switch to battle view.
-- Minimal  tactical grid (reuse some isometric tech or new ortho grid?).
+- Detect "hero moves onto enemy hero tile" and switch to battle view.
+- Battle arena must follow the same `ART_DIRECTION.md` target as the world map: high-detail modern pixel fantasy, embedded terrain hexes, warm/cool lighting, foreground silhouettes, midground obstacles, and distant backdrop layers.
+- Build a manifest-driven battle arena kit before battle rules: hex base variants, elevated hex blocks, obstacles, torch/light props, contact shadows, and backdrop.
+- Add first unit sprites from `docs/ASSET_PROMPTS.md`: idle sheets, strong silhouettes, feet anchors, and readable status markers.
+- Minimal tactical grid can reuse engine rendering pieces, but it must not look like a sterile prototype board.
 - Two units, one hero, attack/move on grid.
 - Return to world map after "battle" resolves.
-- (Full HoMM battle rules come much later or in parallel vertical slice.)
+- Full battle rules come later; the art pipeline and unit readability must be proven in this phase.
 
 ---
 

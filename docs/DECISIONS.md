@@ -40,4 +40,24 @@
 **Status**: Approved for the Phase 1 hardening branch.
 
 ---
+
+## 2026-05-30 - Original High-Detail Isometric Pixel Art Direction
+
+**Decision**: Make NidoWar's art direction an explicit phase gate before Phase 2 gameplay work. The target is original high-detail modern isometric pixel fantasy strategy art with dense authored terrain, readable unit silhouettes, layered world props, and dramatic warm/cool lighting.
+
+**Rationale**:
+- Phase 1 proved the renderer, but the prototype map does not meet the desired visual quality bar.
+- Movement, heroes, armies, and battle mode will expose much more art, so visual direction must be locked before adding those systems.
+- A repeatable prompt deck and manifest pipeline reduce the risk of inconsistent generated assets.
+
+**Constraints enforced**:
+- Commercial game screenshots may be used as density, lighting, and quality references only.
+- NidoWar assets must be original and must not copy exact sprites, buildings, UI, faction marks, map layouts, or distinctive compositions from reference games.
+- `docs/ART_DIRECTION.md` defines the visual target.
+- `docs/ASSET_PROMPTS.md` is the source of truth for generated asset prompts.
+- Phase 2 starts with terrain/prop/lighting art pipeline work before gameplay-heavy movement.
+
+**Status**: Approved as the Phase 2 planning baseline.
+
+---
 *All future rendering decisions must be recorded here before code is written.*

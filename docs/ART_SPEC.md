@@ -1,14 +1,19 @@
 # Art Specification (Codex Reference)
 
-All graphics are **pixel art sprites or spritesheets**.
+All graphics are pixel art sprites, spritesheets, or manifest-declared terrain materials.
 
 ## Strict Requirements
-- Art is **always provided transparent** (alpha channel). Never attempt to auto-remove backgrounds in code or by hand — ask user to re-export if missing.
-- Low-detail, crisp, strong linework, simple shading, light props, high-contrast vivid "poetic" colors (Japanese animation / retro J-RPG feel).
-- Smartphone-first: legible at small sizes, good touch targets, minimal fine detail.
+- Art is always provided transparent when it is a sprite, prop, decal, unit, building, effect, or transition piece. Never attempt to auto-remove backgrounds in code or by hand. Ask for a corrected export if alpha is missing.
+- Opaque terrain material textures are allowed only for base materials such as grass, dirt, stone, water, and forest floor.
+- The visual target is defined in `docs/ART_DIRECTION.md`: original high-detail modern isometric pixel fantasy strategy art with dense terrain storytelling, painterly pixel clusters, dramatic warm/cool lighting, and strong readable silhouettes.
+- Reference screenshots from commercial games are a quality bar only. Do not request or create exact copies of their sprites, structures, UI, faction marks, map layouts, or distinctive compositions.
+- Smartphone-first readability still matters: dense art is allowed, but units, interactables, roads, obstacles, and selection states must stay legible at small sizes.
+- World map and battle arena art must share the same palette logic, lighting language, perspective discipline, and sprite density.
+- A plain terrain texture with scattered decals is not accepted as final art. Terrain must be built from materials, transitions, clustered decals, medium props, tall occluders, contact shadows, and lighting.
 
 ## Sprite Manifest (JSON) - Mandatory
-Every sprite or spritesheet **must** have a matching `.json` sidecar file that defines:
+
+Every sprite or spritesheet must have a matching `.json` sidecar file that defines:
 
 ```json
 {
@@ -24,19 +29,24 @@ Every sprite or spritesheet **must** have a matching `.json` sidecar file that d
 }
 ```
 
-### Field meanings
-- `frames[].rect` (or x,y,w,h): rectangular boundary in source image.
-- `center` (or pivot): local origin for placement/rotation (pixel coords inside frame).
-- `duration`: ms per frame. 0 or omitted = still frame.
-- `scale`: scalar applied at render time (allows mixing different source resolutions).
-- `anchor`: normalized (0-1) point used for world positioning (common for isometric feet/center).
+### Field Meanings
+- `frames[].rect` or `x,y,w,h`: rectangular boundary in source image.
+- `center` or `pivot`: local origin for placement/rotation in pixel coords inside the frame.
+- `duration`: ms per frame. 0 or omitted means still frame.
+- `scale`: scalar applied at render time so different source resolutions can mix safely.
+- `anchor`: normalized 0-1 point used for world positioning, usually feet or footprint center.
 
-## Usage in Engine
+## Usage In Engine
 - Engine never hardcodes pixel numbers from art.
-- All drawing goes through a `SpriteRenderer` or equivalent that reads the manifest.
+- All drawing goes through a renderer or view object that reads the manifest.
 - This allows art to be replaced without touching gameplay code.
 
+## Asset Prompt Source
+- Use `docs/ASSET_PROMPTS.md` as the starting prompt deck for generated sprites, terrain textures, decals, world props, battle arena tiles, and unit sprites.
+- Prompts must describe the NidoWar art direction directly instead of naming another game or artist as the requested style.
+- Generated art is not accepted until it has a matching manifest and a quick in-game or atlas QA screenshot.
+
 ## UI Style
-- Minimal text. Beautiful retro J-RPG aesthetic.
-- Icons + symbols preferred over words.
+- Minimal text. Rich fantasy strategy interface, readable over dense pixel art.
+- Icons and symbols preferred over words.
 - High contrast, readable on phone in bright sunlight.

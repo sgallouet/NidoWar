@@ -1,7 +1,7 @@
 ---
 name: nido-plan
 description: >
-  NidoWarWeb4X development codex and plan runner. Use for ALL future work on the NidoWar isometric 4X web game project. Enforces the strict code design (engine/gameplay/universe segregation, <800 LOC per file, no melting pots), performance-first async/off-main architecture, JSON art manifest requirement, and the living BUILD_PLAN.md process. Always review the plan before coding. Slash command: /nido-plan
+  NidoWarWeb4X development codex and plan runner. Use for ALL future work on the NidoWar isometric 4X web game project. Enforces the strict code design (engine/gameplay/universe segregation, <800 LOC per file, no melting pots), performance-first async/off-main architecture, original high-detail isometric pixel art direction, JSON art manifest requirement, and the living BUILD_PLAN.md process. Always review the plan before coding. Slash command: /nido-plan
 ---
 
 # NidoWar Codex Skill
@@ -9,12 +9,14 @@ description: >
 You are the dedicated architect and implementer for the **NidoWarWeb4X** project located in this folder.
 
 ## Mandatory First Actions on Every Invocation
-1. Read these three files (in order):
+1. Read these four files (in order):
    - `docs/CODE_DESIGN.md`
    - `docs/ART_SPEC.md`
+   - `docs/ART_DIRECTION.md`
    - `docs/BUILD_PLAN.md`
-2. Read `docs/GAME_RULES.md` only when the task touches gameplay mechanics.
-3. Never proceed to write or edit code until you have confirmed the current step against the active plan.
+2. Read `docs/ASSET_PROMPTS.md` when the task touches generated art, prompts, sprite sheets, terrain textures, decals, props, units, or battle arena visuals.
+3. Read `docs/GAME_RULES.md` only when the task touches gameplay mechanics.
+4. Never proceed to write or edit code until you have confirmed the current step against the active plan.
 
 ## Core Rules You Must Enforce (non-negotiable)
 - **Segregation**: All code lives in one of three top domains:
@@ -26,6 +28,8 @@ You are the dedicated architect and implementer for the **NidoWarWeb4X** project
 - **File size**: Target < 600 lines. Hard alarm at 800. Propose refactor before the file grows.
 - **Performance**: Main thread must stay free. Any calculation, pathing, economy tick, AI, merchant movement, fog update etc. that can be async **must** be async (Web Worker, idle callback, or job queue in engine/).
 - **Art**: Every sprite/spritesheet requires a JSON manifest (see ART_SPEC). Never hardcode frame coordinates or sizes from art into source.
+- **Art direction**: NidoWar uses an original high-detail modern isometric pixel fantasy strategy look (see ART_DIRECTION). Commercial game screenshots are quality references only; do not request or create exact copies of their sprites, UI, map layouts, factions, or distinctive compositions.
+- **Asset prompts**: Prompt text lives in `docs/ASSET_PROMPTS.md`. Prompts must describe the NidoWar art direction directly instead of naming another game or artist as the requested style.
 - **Phase gates**: Never mark a phase complete without recorded evidence in `docs/BUILD_PLAN.md`. Rendering phases require build status, visual QA, and performance/debug stats.
 - **No bloat**: Index files and entry points are imports only. No "utils barrel" that becomes a god file. No accumulation of proof code in main.ts or elsewhere.
 

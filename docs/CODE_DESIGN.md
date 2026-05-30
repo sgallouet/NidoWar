@@ -41,6 +41,9 @@
 ## Art Integration Rule
 - All art access goes through JSON manifests (see ART_SPEC.md).
 - Never bake pixel coordinates from a specific sprite into gameplay or engine core.
+- Art direction is a first-class architecture concern: world map, battle arena, unit sprites, lighting, and UI-adjacent icons must follow `docs/ART_DIRECTION.md`.
+- Generated asset prompts must come from or be added back to `docs/ASSET_PROMPTS.md` so the visual system remains repeatable.
+- Commercial screenshots may define quality expectations, density, and lighting goals, but NidoWar assets must be original and cannot copy protected sprites, layouts, UI, or faction designs.
 
 ## Phase Gate Rule
 - A phase cannot be marked complete until its exit criteria have recorded evidence in `docs/BUILD_PLAN.md`.
