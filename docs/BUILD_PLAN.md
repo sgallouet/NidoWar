@@ -141,6 +141,7 @@
 - 2026-05-30: Screenshot capture through the in-app browser timed out and should be retried after the next visual slice.
 - Follow-up performance note: the one-time terrain surface bake should move off the main thread or into an idle/preload job before Phase 2 close.
 - 2026-05-30: After the 2.3 transition resolver, `npm run build` passed. Browser stat sample: initial cached terrain surface bake 771.2ms, then panning max 3.7ms across 4 drag samples. Last pan sample: 1036 visible tiles, 35 decals, 21 props, 6 torches, 70 draw calls, 69 visible sprites, 74 pooled sprites, 5 stage children.
+- 2026-05-30: First generated grass meadow material accepted as a better visual fit and wired into `terrain_grass_meadow.json`. Browser check passed with no warnings/errors: initial terrain bake 678.9ms, panning max 2.2ms across 6 drag samples. Watch for visible tiling; if seams show up, regenerate as an explicitly seamless 1024x1024 or 512x512 material.
 
 ---
 
