@@ -1,7 +1,8 @@
 import { screenToWorld, worldToScreen, type Point } from '@engine/isometric';
 import type { IsometricRenderer } from '@engine/renderer/IsometricRenderer';
 import type { TileGrid } from './TileGrid';
-import type { TerrainBlend, TerrainMaterialId, TerrainMaterialSet } from './TerrainMaterial';
+import { MATERIAL_IDS, type TerrainMaterialId, type TerrainMaterialSet } from './TerrainMaterial';
+import { resolveTerrainTransition, type TerrainTransition } from './TerrainTransition';
 
 interface TerrainBounds {
   minX: number;
@@ -17,8 +18,6 @@ interface TextureSampler {
 }
 
 type TerrainSamplers = Record<TerrainMaterialId, TextureSampler>;
-
-const MATERIAL_IDS: TerrainMaterialId[] = ['grass', 'dirt', 'cobblestone', 'forest', 'water'];
 
 const MATERIAL_OFFSETS: Record<TerrainMaterialId, { x: number; y: number }> = {
   grass: { x: 0, y: 0 },
@@ -86,10 +85,11 @@ export class TerrainTextureView {
           continue;
         }
 
-        const blend = this.grid.getTerrainBlend(world.x, world.y);
+        const mask = this.getTransitionMask(world.x, world.y, screenX, screenY);
+        const transition = resolveTerrainTransition(this.grid.getTerrainBlend(world.x, world.y), mask);
         const color = this.gradeTerrainColor(
-          this.sampleBlend(samplers, blend, screenX, screenY),
-          blend,
+          this.sampleBlend(samplers, transition, screenX, screenY),
+          transition,
           screenX,
           screenY
         );
@@ -152,14 +152,14 @@ export class TerrainTextureView {
 
   private sampleBlend(
     samplers: TerrainSamplers,
-    blend: TerrainBlend,
+    transition: TerrainTransition,
     screenX: number,
     screenY: number
   ): [number, number, number] {
     const color: [number, number, number] = [0, 0, 0];
 
     for (const id of MATERIAL_IDS) {
-      const weight = blend[id];
+      const weight = transition.blend[id];
       if (weight <= 0) continue;
 
       const offset = MATERIAL_OFFSETS[id];
@@ -174,11 +174,10 @@ export class TerrainTextureView {
 
   private gradeTerrainColor(
     color: [number, number, number],
-    blend: TerrainBlend,
+    transition: TerrainTransition,
     screenX: number,
     screenY: number
   ): [number, number, number] {
-    const transition = 1 - Math.max(...MATERIAL_IDS.map((id) => blend[id]));
     const broadPatch = this.valueNoise(screenX * 0.013, screenY * 0.013, 11);
     const finePatch = this.valueNoise(screenX * 0.045, screenY * 0.045, 37);
     const speckle = this.hash(screenX, screenY, 53) / 0xffffffff;
@@ -186,18 +185,52 @@ export class TerrainTextureView {
 
     result = this.lighten(result, (finePatch - 0.5) * 10);
     result = this.mixColor(result, [57, 86, 73], Math.max(0, broadPatch - 0.58) * 0.22);
-    result = this.mixColor(result, [177, 150, 78], transition * 0.22);
+    result = this.applyTransitionAccent(result, transition, speckle);
 
-    if (blend.water > 0.2) {
-      result = this.mixColor(result, [38, 83, 96], blend.water * 0.18);
+    if (transition.blend.water > 0.2) {
+      result = this.mixColor(result, [38, 83, 96], transition.blend.water * 0.18);
       result = this.lighten(result, speckle > 0.965 ? 42 : 0);
     }
 
-    if (blend.cobblestone > 0.28) {
-      result = this.mixColor(result, [193, 178, 138], blend.cobblestone * 0.12);
+    if (transition.blend.cobblestone > 0.28) {
+      result = this.mixColor(result, [193, 178, 138], transition.blend.cobblestone * 0.12);
     }
 
     return result;
+  }
+
+  private applyTransitionAccent(
+    color: [number, number, number],
+    transition: TerrainTransition,
+    speckle: number
+  ): [number, number, number] {
+    const amount = transition.accentAmount;
+    const pair = [transition.primary, transition.secondary].sort().join(':');
+    let accent: [number, number, number] = [177, 150, 78];
+    let strength = amount * 0.18;
+
+    if (pair.includes('water')) {
+      accent = speckle > 0.72 ? [137, 169, 151] : [48, 68, 65];
+      strength = amount * 0.34;
+    } else if (pair.includes('cobblestone')) {
+      accent = speckle > 0.52 ? [193, 177, 132] : [74, 78, 74];
+      strength = amount * 0.28;
+    } else if (pair.includes('forest')) {
+      accent = speckle > 0.62 ? [93, 122, 64] : [34, 64, 54];
+      strength = amount * 0.3;
+    } else if (pair.includes('dirt')) {
+      accent = speckle > 0.5 ? [181, 138, 73] : [94, 66, 48];
+      strength = amount * 0.24;
+    }
+
+    return this.mixColor(color, accent, strength);
+  }
+
+  private getTransitionMask(worldX: number, worldY: number, screenX: number, screenY: number): number {
+    const broad = this.valueNoise(worldX * 1.7, worldY * 1.7, 71);
+    const fine = this.hash(screenX, screenY, 109) / 0xffffffff;
+
+    return Math.max(0, Math.min(1, broad * 0.72 + fine * 0.28));
   }
 
   private isInsideMap(x: number, y: number): boolean {

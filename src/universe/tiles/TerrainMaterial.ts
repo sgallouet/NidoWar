@@ -1,5 +1,7 @@
 export type TerrainMaterialId = 'grass' | 'dirt' | 'cobblestone' | 'forest' | 'water';
 
+export const MATERIAL_IDS: TerrainMaterialId[] = ['grass', 'dirt', 'cobblestone', 'forest', 'water'];
+
 export interface TerrainMaterial {
   readonly id: TerrainMaterialId;
   readonly image: HTMLImageElement;

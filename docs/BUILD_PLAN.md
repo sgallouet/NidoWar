@@ -120,8 +120,8 @@
 **Suggested slice order**:
 - ~~2.0~~ **DONE (2026-05-30)** - Art bible target accepted for implementation: `ART_DIRECTION.md` + `ASSET_PROMPTS.md` are the Phase 2 visual source of truth.
 - ~~2.1~~ **DONE (2026-05-30)** - First asset pipeline upgrade: terrain materials now load through manifest-backed material ids (`grass`, `dirt`, `cobblestone`, `forest`, `water`) instead of a hardcoded grass/dust pair.
-- **2.2 IN PROGRESS (2026-05-30)** - Placeholder terrain material kit added for grass meadow, reddish dirt path, cobblestone road, forest floor, and shallow water. These are deliberately temporary PNGs that can be replaced by generated art without source changes.
-- **2.3 Terrain transition renderer** - Support irregular path/terrain edges from generated transition sprites or masks so roads and dirt patches no longer look like soft blobs.
+- ~~2.2~~ **DONE (2026-05-30)** - Placeholder terrain material kit added for grass meadow, reddish dirt path, cobblestone road, forest floor, and shallow water. These are deliberately temporary PNGs that can be replaced by generated art without source changes.
+- ~~2.3~~ **DONE (2026-05-30)** - Added a mask-driven terrain transition resolver that sharpens material borders and adds terrain-specific edge accents so roads, forest floor, water, and dirt patches no longer rely on pure soft blending.
 - **2.4 World decal and prop atlas v1** - Integrate meadow decals, forest floor decals, rocks, shrubs, tall grass, tree clusters, torches, ruins, chests, and small interactable props.
 - **2.5 Tall occluder/depth pass** - Add layered forests, cliff/mountain edges, and building-height props with correct depth sorting, contact shadows, and optional occlusion rules.
 - **2.6 Lighting and color grade pass** - Replace the current blunt night overlay with a richer lighting model: warm torch/window cores, soft falloff, cool ambient shadows, directional day shadows, and biome-specific grading.
@@ -140,6 +140,7 @@
 - 2026-05-30: Browser stat sample after reload: initial cached terrain surface bake 603.2ms, then panning max 2.0ms across 4 drag samples. Last pan sample: 1036 visible tiles, 35 decals, 21 props, 6 torches, 70 draw calls, 69 visible sprites, 74 pooled sprites, 5 stage children.
 - 2026-05-30: Screenshot capture through the in-app browser timed out and should be retried after the next visual slice.
 - Follow-up performance note: the one-time terrain surface bake should move off the main thread or into an idle/preload job before Phase 2 close.
+- 2026-05-30: After the 2.3 transition resolver, `npm run build` passed. Browser stat sample: initial cached terrain surface bake 771.2ms, then panning max 3.7ms across 4 drag samples. Last pan sample: 1036 visible tiles, 35 decals, 21 props, 6 torches, 70 draw calls, 69 visible sprites, 74 pooled sprites, 5 stage children.
 
 ---
 
