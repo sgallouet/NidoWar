@@ -3,6 +3,11 @@ import type { LoadedSpriteManifest } from '@engine/assets/AssetManifest';
 import type { IsometricRenderer } from '@engine/renderer/IsometricRenderer';
 import type { Point } from '@engine/isometric';
 
+export interface TileSpriteAtlas {
+  readonly manifest: LoadedSpriteManifest;
+  readonly image: HTMLImageElement;
+}
+
 /**
  * View for a tile. Knows how it wants to be drawn but does not know
  * anything about the concrete renderer (Pixi, Canvas, etc.).
@@ -14,10 +19,7 @@ export class TileView {
   constructor(
     private readonly renderer: IsometricRenderer,
     private readonly manifest: LoadedSpriteManifest,
-    private readonly decalManifest: LoadedSpriteManifest,
-    private readonly decalImage: HTMLImageElement,
-    private readonly propManifest: LoadedSpriteManifest,
-    private readonly propImage: HTMLImageElement,
+    private readonly atlases: ReadonlyMap<string, TileSpriteAtlas>,
     private readonly torchManifest: LoadedSpriteManifest,
     private readonly torchImage: HTMLImageElement
   ) {}
@@ -30,11 +32,14 @@ export class TileView {
     tileHeight: number,
     offset: Point
   ): void {
+    const atlas = this.atlases.get(decal.assetKey);
+    if (!atlas) return;
+
     this.renderer.drawIsometricSprite(
       viewX + decal.offsetX,
       viewY + decal.offsetY,
-      this.decalImage,
-      this.decalManifest,
+      atlas.image,
+      atlas.manifest,
       decal.frameIndex,
       tileWidth,
       tileHeight,
@@ -52,11 +57,14 @@ export class TileView {
     tileHeight: number,
     offset: Point
   ): void {
+    const atlas = this.atlases.get(prop.assetKey);
+    if (!atlas) return;
+
     this.renderer.drawIsometricSprite(
       viewX + prop.offsetX,
       viewY + prop.offsetY,
-      this.propImage,
-      this.propManifest,
+      atlas.image,
+      atlas.manifest,
       prop.frameIndex,
       tileWidth,
       tileHeight,

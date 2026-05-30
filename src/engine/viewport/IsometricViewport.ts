@@ -8,7 +8,7 @@
 import { Camera } from '../camera/Camera';
 import { PointerInput } from '../input/PointerInput';
 import { TileGrid } from '../../universe/tiles/TileGrid';
-import { TileView } from '../../universe/tiles/TileView';
+import { TileView, type TileSpriteAtlas } from '../../universe/tiles/TileView';
 import { TerrainTextureView } from '../../universe/tiles/TerrainTextureView';
 import { loadSpriteManifest, loadImage } from '../assets/AssetLoader';
 import type { LoadedSpriteManifest } from '../assets/AssetManifest';
@@ -48,8 +48,6 @@ export class IsometricViewport {
   private grid: TileGrid;
   private isoRenderer: IsometricRenderer;
   private manifest!: LoadedSpriteManifest;
-  private decalManifest!: LoadedSpriteManifest;
-  private propManifest!: LoadedSpriteManifest;
   private torchManifest!: LoadedSpriteManifest;
   private terrainView: TerrainTextureView | null = null;
   private tileView: TileView | null = null;
@@ -78,16 +76,11 @@ export class IsometricViewport {
 
   async start(): Promise<void> {
     this.manifest = await loadSpriteManifest('/assets/manifests/grass_tile.json');
-    this.decalManifest = await loadSpriteManifest('/assets/manifests/grass_decals.json');
-    this.propManifest = await loadSpriteManifest('/assets/manifests/terrain_props.json');
+    const atlases = await this.loadDecorationAtlases();
     this.torchManifest = await loadSpriteManifest('/assets/manifests/torch.json');
     const terrainMaterials = await this.loadTerrainMaterials();
 
-    const decalImageUrl = `/assets/${this.decalManifest.image}`;
-    const propImageUrl = `/assets/${this.propManifest.image}`;
     const torchImageUrl = `/assets/${this.torchManifest.image}`;
-    const decalImage = await loadImage(decalImageUrl);
-    const propImage = await loadImage(propImageUrl);
     const torchImage = await loadImage(torchImageUrl);
     this.syncTileSizeFromManifest();
     this.terrainView = new TerrainTextureView(
@@ -99,10 +92,7 @@ export class IsometricViewport {
     this.tileView = new TileView(
       this.isoRenderer,
       this.manifest,
-      this.decalManifest,
-      decalImage,
-      this.propManifest,
-      propImage,
+      atlases,
       this.torchManifest,
       torchImage
     );
@@ -129,6 +119,24 @@ export class IsometricViewport {
     )));
 
     return Object.fromEntries(materials.map((material) => [material.id, material])) as TerrainMaterialSet;
+  }
+
+  private async loadDecorationAtlases(): Promise<ReadonlyMap<string, TileSpriteAtlas>> {
+    const entries: Array<[string, string]> = [
+      ['meadow_decals', '/assets/manifests/world_meadow_decals.json'],
+      ['path_decals', '/assets/manifests/world_path_decals.json'],
+      ['forest_decals', '/assets/manifests/world_forest_decals.json'],
+      ['world_props', '/assets/manifests/world_props_v1.json'],
+    ];
+    const atlases = new Map<string, TileSpriteAtlas>();
+
+    await Promise.all(entries.map(async ([key, manifestUrl]) => {
+      const manifest = await loadSpriteManifest(manifestUrl);
+      const image = await loadImage(`/assets/${manifest.image}`);
+      atlases.set(key, { manifest, image });
+    }));
+
+    return atlases;
   }
 
   private async loadTerrainMaterial(id: TerrainMaterialId, manifestUrl: string): Promise<TerrainMaterial> {

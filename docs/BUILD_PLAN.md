@@ -122,7 +122,7 @@
 - ~~2.1~~ **DONE (2026-05-30)** - First asset pipeline upgrade: terrain materials now load through manifest-backed material ids (`grass`, `dirt`, `cobblestone`, `forest`, `water`) instead of a hardcoded grass/dust pair.
 - ~~2.2~~ **DONE (2026-05-30)** - Placeholder terrain material kit added for grass meadow, reddish dirt path, cobblestone road, forest floor, and shallow water. These are deliberately temporary PNGs that can be replaced by generated art without source changes.
 - ~~2.3~~ **DONE (2026-05-30)** - Added a mask-driven terrain transition resolver that sharpens material borders and adds terrain-specific edge accents so roads, forest floor, water, and dirt patches no longer rely on pure soft blending.
-- **2.4 World decal and prop atlas v1** - Integrate meadow decals, forest floor decals, rocks, shrubs, tall grass, tree clusters, torches, ruins, chests, and small interactable props.
+- ~~2.4~~ **DONE (2026-05-30)** - World decal and prop atlas v1 integrated: separate manifest-backed meadow, path, forest, and prop atlases with terrain-aware placement.
 - **2.5 Tall occluder/depth pass** - Add layered forests, cliff/mountain edges, and building-height props with correct depth sorting, contact shadows, and optional occlusion rules.
 - **2.6 Lighting and color grade pass** - Replace the current blunt night overlay with a richer lighting model: warm torch/window cores, soft falloff, cool ambient shadows, directional day shadows, and biome-specific grading.
 - **2.7 World landmark kit v1** - Add original NidoWar structures: small house, guard tower, castle gate segment, mine entrance, magic shrine, campfire, and resource nodes.
@@ -142,6 +142,7 @@
 - Follow-up performance note: the one-time terrain surface bake should move off the main thread or into an idle/preload job before Phase 2 close.
 - 2026-05-30: After the 2.3 transition resolver, `npm run build` passed. Browser stat sample: initial cached terrain surface bake 771.2ms, then panning max 3.7ms across 4 drag samples. Last pan sample: 1036 visible tiles, 35 decals, 21 props, 6 torches, 70 draw calls, 69 visible sprites, 74 pooled sprites, 5 stage children.
 - 2026-05-30: First generated grass meadow material accepted as a better visual fit and wired into `terrain_grass_meadow.json`. Browser check passed with no warnings/errors: initial terrain bake 678.9ms, panning max 2.2ms across 6 drag samples. Watch for visible tiling; if seams show up, regenerate as an explicitly seamless 1024x1024 or 512x512 material.
+- 2026-05-30: 2.4 world atlas v1 added placeholder meadow/path/forest decal atlases and a mixed world prop atlas. `npm run build` passed. Browser QA at `?debug&phase2=world-atlas-v1`: no warnings/errors, initial terrain bake 570.1ms, panning max 2.2ms across 6 drag samples. Last pan sample: 869 visible tiles, 65 decals, 39 props, 6 torches, 118 draw calls, 117 visible sprites, 164 pooled sprites, 5 stage children. Screenshot: `docs/qa/phase2-2.4-world-atlas-v1.png`. Art is placeholder-quality; final generated atlases should replace these manifests without code changes.
 
 ---
 

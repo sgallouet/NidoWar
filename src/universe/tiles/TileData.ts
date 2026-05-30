@@ -13,6 +13,7 @@ export interface TileData {
 
 export interface TileDecalData {
   readonly id: number;
+  readonly assetKey: string;
   readonly tileX: number;
   readonly tileY: number;
   readonly offsetX: number;
