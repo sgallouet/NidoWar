@@ -1,0 +1,26 @@
+{
+  "name": "world_knight_idle",
+  "image": "sprites/world_knight_idle.png",
+  "frameSize": {
+    "w": 1254,
+    "h": 1254
+  },
+  "frames": [
+    {
+      "x": 0,
+      "y": 0,
+      "w": 1254,
+      "h": 1254,
+      "duration": 0,
+      "center": {
+        "x": 627,
+        "y": 880
+      }
+    }
+  ],
+  "scale": 0.12,
+  "anchor": {
+    "x": 0.5,
+    "y": 0.7
+  }
+}

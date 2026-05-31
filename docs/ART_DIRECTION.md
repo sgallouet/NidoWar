@@ -7,9 +7,10 @@ This document is the visual quality bar for world map, battle arenas, units, str
 - Do not copy exact sprites, UI frames, map layouts, faction marks, buildings, characters, or distinctive compositions from any reference game.
 - The target is an original NidoWar look: high-detail modern isometric pixel fantasy strategy art with dense terrain storytelling, readable tactical silhouettes, and dramatic painterly lighting.
 - Any prompt or art request must describe the NidoWar style directly. Avoid asking for assets "in the style of" a named living studio, artist, or game.
+- When a reference game is discussed, translate it into concrete traits before prompting: high-detail painterly isometric pixel art, readable strategy-map silhouettes, warm light, cool shadows, dense authored terrain, and crisp chunky pixel clusters.
 
 ## Visual Pillars
-- Dense authored terrain: every screen should contain layered ground variation, paths, rocks, grass clumps, flowers, roots, ruins, elevation hints, and small story props.
+- Dense authored terrain: every screen should contain deliberate macro composition first, then layered ground variation, paths, rocks, grass clumps, flowers, roots, ruins, elevation hints, and small story props.
 - Painterly pixel clusters: surfaces are not flat noise. Use hand-placed clusters, broken edges, chunky highlights, and deliberate shadow shapes.
 - Warm light, cool shadows: torches, windows, magic, and sunrise highlights should push warm yellow/orange; ambient shadows should drift blue, violet, or deep green.
 - Tall silhouettes: forests, cliffs, buildings, ruins, and hero banners must rise above the ground plane and create depth.
@@ -32,18 +33,27 @@ This document is the visual quality bar for world map, battle arenas, units, str
 - Magic accents: restrained cyan, violet, gold, and red. Use sparingly so they remain special.
 
 ## World Map Density Rules
-- A plain terrain surface is never final art.
+- A plain terrain surface is never final art, but a noisy terrain surface is not final art either. Calm readable open space is required for strategy-map readability.
+- The world must be accepted in layers, not as one mixed screenshot:
+  - First authored base daylight: a calm grass/meadow clearing framed by forest-border massing, clustered rocks, restrained shrubs, subtle dirt wear, contact shadows, and directional tree/rock shadows. No mountains, no water, no roads as a focus, no walls/fences as a focus, no lighting overlay, no large landmarks, no torches, no hero.
+  - Then road/wall pass: roads, low walls/fences, and boundary structure are added only after the meadow/forest base composition succeeds.
+  - Then structure pass: ruins and larger landmarks are added only after the road/wall composition succeeds.
+  - Then lighting/assets pass: shadows, torches, structures, resources, and units are added only after the base map succeeds.
 - Each biome requires:
   - Base material texture.
-  - Transition mask or blended edge family.
+  - Runtime composition masks for placement, size, tint, opacity, and density.
+  - Reusable alpha-blended overlays and decals.
   - Small decals.
   - Medium props.
   - Tall occluders.
   - Contact shadows.
   - At least one warm light or emissive prop variant when appropriate.
-- Large empty fields must be broken by clusters, paths, rocks, tree shadows, elevation, or interactable landmarks.
+- Large empty fields must be composed, not filled. Their centers should stay quieter than their edges so units, roads, settlements, and UI markers remain readable.
 - Roads and paths should be irregular, stone-edged, and partially overgrown.
-- Forests should be built from layered canopy sprites plus trunks/shadow bases, not scattered identical small trees.
+- Do not solve terrain integration with custom art that tries to transition from one specific material into another. Those assets are brittle and rarely match both sides. Use reusable dirt wear, grass bite marks, stones, weeds, prop bases, runtime alpha blending, tinting, scale variation, and shadows instead.
+- Forests should be built from layered canopy sprites plus trunks/shadow bases, not scattered identical small trees. For the first base gate, forests are allowed only as composition-framing edge massing and sparse internal accents, not as all-over scatter.
+- Mountains, cliffs, water, and shoreline borders are later composition anchors. They are deferred until meadow/forest and road/wall composition are accepted.
+- Random scattering is a detail layer only. It must never be the primary method for making the map feel authored.
 
 ## Battle Arena Rules
 - Hexes must be readable, but the grid should feel embedded in the terrain.
@@ -65,7 +75,7 @@ This document is the visual quality bar for world map, battle arenas, units, str
 
 ## Asset Delivery Rules
 - Transparent PNG for sprites, props, units, buildings, effects, and decals.
-- Terrain source textures may be opaque if they are material tiles, but their transitions and decals require alpha.
+- Terrain source textures may be opaque if they are material tiles. Reusable overlays, decals, props, and effects require alpha.
 - Every asset or sheet must have a JSON manifest.
 - Use consistent pivots:
   - World decals: center of ground footprint.

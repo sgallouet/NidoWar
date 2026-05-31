@@ -9,9 +9,9 @@ import { Application, Color, Container, Graphics, Rectangle, Sprite, Texture } f
 import type { IRenderer } from './IRenderer';
 import type {
   ImageDrawOptions,
-  RadialLightDrawOptions,
   RenderLayer,
   RenderStats,
+  SceneLightingDrawOptions,
   SpriteDrawOptions,
 } from './IRenderer';
 
@@ -27,8 +27,10 @@ export class PixiRenderer implements IRenderer {
   };
   private graphics = new Graphics();
   private lightingOverlay = new Graphics();
+  private gradeOverlay = new Graphics();
   private textureCache = new Map<string, Texture>();
   private lightTextureCache = new Map<string, Texture>();
+  private lightCoreTextureCache = new Map<string, Texture>();
   private imageTextureCache = new Map<string, Texture>();
   private canvasImageIds = new WeakMap<HTMLCanvasElement, number>();
   private spritePools = new Map<string, Sprite[]>();
@@ -50,7 +52,7 @@ export class PixiRenderer implements IRenderer {
     await this.app.init({
       width: window.innerWidth,
       height: window.innerHeight,
-      backgroundColor: 0x0a0a0c,
+      backgroundColor: 0x1f341b,
       antialias: false,
       resolution: 1,
     });
@@ -66,7 +68,7 @@ export class PixiRenderer implements IRenderer {
     }
 
     this.layers.terrain.addChild(this.graphics);
-    this.layers.lighting.addChild(this.lightingOverlay);
+    this.layers.lighting.addChild(this.lightingOverlay, this.gradeOverlay);
     this.app.stage.addChild(
       this.layers.terrain,
       this.layers.decal,
@@ -87,6 +89,7 @@ export class PixiRenderer implements IRenderer {
     this.poolCursors.clear();
     this.graphics.clear();
     this.lightingOverlay.clear();
+    this.gradeOverlay.clear();
     this.hidePooledSprites();
   }
 
@@ -122,8 +125,15 @@ export class PixiRenderer implements IRenderer {
 
     sprite.texture = this.getImageTexture(options.image);
     sprite.anchor.set(0);
-    sprite.position.set(Math.round(options.screenX), Math.round(options.screenY));
+    sprite.roundPixels = false;
+    sprite.position.set(options.screenX, options.screenY);
     sprite.scale.set(options.scale ?? 1);
+    if (layer === 'terrain') {
+      sprite.width = options.image.width * (options.scale ?? 1) + 1;
+      sprite.height = options.image.height * (options.scale ?? 1) + 1;
+    }
+    sprite.alpha = options.alpha ?? 1;
+    sprite.tint = this.parseTint(options.tint);
     this.countSpriteDraw();
   }
 
@@ -136,18 +146,29 @@ export class PixiRenderer implements IRenderer {
 
     sprite.texture = this.getFrameTexture(options);
     sprite.anchor.set(frame.center.x / frame.w, frame.center.y / frame.h);
+    sprite.roundPixels = true;
     sprite.position.set(Math.round(options.screenX), Math.round(options.screenY));
     sprite.scale.set(scale);
+    sprite.alpha = options.alpha ?? 1;
+    sprite.tint = this.parseTint(options.tint);
     this.countSpriteDraw();
   }
 
-  drawNightLighting(ambientColor: string, ambientAlpha: number, lights: RadialLightDrawOptions[]): void {
+  drawSceneLighting(options: SceneLightingDrawOptions): void {
     this.lightingOverlay.clear();
+    this.gradeOverlay.clear();
     this.lightingOverlay.rect(0, 0, this.app.renderer.width, this.app.renderer.height);
-    this.lightingOverlay.fill({ color: this.parseColor(ambientColor), alpha: ambientAlpha });
+    this.lightingOverlay.fill({ color: this.parseColor(options.ambientColor), alpha: options.ambientAlpha });
     this.stats.drawCalls++;
 
-    for (const light of lights) {
+    if (options.gradeAlpha > 0) {
+      this.gradeOverlay.rect(0, 0, this.app.renderer.width, this.app.renderer.height);
+      this.gradeOverlay.fill({ color: this.parseColor(options.gradeColor), alpha: options.gradeAlpha });
+      this.gradeOverlay.blendMode = 'screen';
+      this.stats.drawCalls++;
+    }
+
+    for (const light of options.lights) {
       const key = `lighting:light:${light.color}`;
       const sprite = this.getPooledSprite('lighting', key);
       const diameter = light.radius * 2;
@@ -160,6 +181,21 @@ export class PixiRenderer implements IRenderer {
       sprite.alpha = light.intensity;
       sprite.blendMode = 'add';
       this.countSpriteDraw();
+
+      if (light.coreRadius && light.coreIntensity) {
+        const coreKey = `lighting:core:${light.color}`;
+        const core = this.getPooledSprite('lighting', coreKey);
+        const coreDiameter = light.coreRadius * 2;
+
+        core.texture = this.getLightCoreTexture(light.color);
+        core.anchor.set(0.5);
+        core.position.set(Math.round(light.screenX), Math.round(light.screenY));
+        core.width = coreDiameter;
+        core.height = coreDiameter;
+        core.alpha = light.coreIntensity;
+        core.blendMode = 'add';
+        this.countSpriteDraw();
+      }
     }
   }
 
@@ -184,11 +220,13 @@ export class PixiRenderer implements IRenderer {
     const frameIndex = options.frameIndex ?? 0;
     const frame = options.manifest.frames[frameIndex];
     const base = Texture.from(options.image);
+    this.applyPixelScale(base);
     const texture = new Texture({
       source: base.source,
       frame: new Rectangle(frame.x, frame.y, frame.w, frame.h),
       orig: new Rectangle(0, 0, frame.w, frame.h),
     });
+    this.applyPixelScale(texture);
 
     this.textureCache.set(key, texture);
     return texture;
@@ -206,8 +244,14 @@ export class PixiRenderer implements IRenderer {
     if (cached) return cached;
 
     const texture = Texture.from(image);
+    this.applyPixelScale(texture);
     this.imageTextureCache.set(key, texture);
     return texture;
+  }
+
+  private applyPixelScale(texture: Texture): void {
+    texture.source.scaleMode = 'nearest';
+    texture.source.style.update();
   }
 
   private getImageKey(image: HTMLImageElement | HTMLCanvasElement): string {
@@ -238,6 +282,7 @@ export class PixiRenderer implements IRenderer {
 
     sprite.visible = true;
     sprite.alpha = 1;
+    sprite.tint = 0xffffff;
     sprite.blendMode = 'normal';
     this.poolCursors.set(key, cursor + 1);
     return sprite;
@@ -278,9 +323,9 @@ export class PixiRenderer implements IRenderer {
 
     const center = size / 2;
     const gradient = ctx.createRadialGradient(center, center, 0, center, center, center);
-    gradient.addColorStop(0, this.hexToRgba(color, 1));
-    gradient.addColorStop(0.18, this.hexToRgba('#fff1b8', 0.82));
-    gradient.addColorStop(0.42, this.hexToRgba(color, 0.36));
+    gradient.addColorStop(0, this.hexToRgba('#fff1b8', 0.92));
+    gradient.addColorStop(0.12, this.hexToRgba(color, 0.78));
+    gradient.addColorStop(0.46, this.hexToRgba(color, 0.28));
     gradient.addColorStop(1, this.hexToRgba(color, 0));
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, size, size);
@@ -290,8 +335,38 @@ export class PixiRenderer implements IRenderer {
     return texture;
   }
 
+  private getLightCoreTexture(color: string): Texture {
+    const cached = this.lightCoreTextureCache.get(color);
+    if (cached) return cached;
+
+    const size = 48;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('[PixiRenderer] Failed to create light core texture');
+
+    const center = size / 2;
+    const gradient = ctx.createRadialGradient(center, center, 0, center, center, center);
+    gradient.addColorStop(0, this.hexToRgba('#fff8d4', 1));
+    gradient.addColorStop(0.32, this.hexToRgba('#ffd066', 0.85));
+    gradient.addColorStop(0.72, this.hexToRgba(color, 0.32));
+    gradient.addColorStop(1, this.hexToRgba(color, 0));
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+
+    const texture = Texture.from(canvas);
+    this.applyPixelScale(texture);
+    this.lightCoreTextureCache.set(color, texture);
+    return texture;
+  }
+
   private parseColor(hex: string): number {
     return parseInt(hex.replace('#', ''), 16);
+  }
+
+  private parseTint(hex?: string): number {
+    return hex ? this.parseColor(hex) : 0xffffff;
   }
 
   private hexToRgba(hex: string, alpha: number): string {

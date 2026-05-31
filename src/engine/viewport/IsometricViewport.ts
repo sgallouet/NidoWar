@@ -13,19 +13,20 @@ import { TerrainTextureView } from '../../universe/tiles/TerrainTextureView';
 import { loadSpriteManifest, loadImage } from '../assets/AssetLoader';
 import type { LoadedSpriteManifest } from '../assets/AssetManifest';
 import { screenToWorld, worldToScreen } from '@engine/isometric';
-import { Canvas2DRenderer } from '../renderer/Canvas2DRenderer';
 import { IsometricRenderer } from '../renderer/IsometricRenderer';
 import { PixiRenderer } from '../renderer/PixiRenderer';
-import type { IRenderer } from '../renderer/IRenderer';
-import type { TileData, TileDecalData, TileLightData } from '../../universe/tiles/TileData';
+import { createSceneLighting, DAY_LIGHTING_PROFILE, NIGHT_LIGHTING_PROFILE } from '../lighting/LightingProfile';
+import type { TileData, TileDecalData, TileLightData, TileOccluderData } from '../../universe/tiles/TileData';
 import type { RadialLightDrawOptions } from '../renderer/IRenderer';
 import type { TerrainMaterial, TerrainMaterialId, TerrainMaterialSet } from '../../universe/tiles/TerrainMaterial';
 
 interface Phase1RenderStats {
   frameMs: number;
+  visualMode: VisualMode;
   visibleTiles: number;
   visibleDecals: number;
   visibleProps: number;
+  visibleOccluders: number;
   torches: number;
   drawCalls: number;
   visibleSprites: number;
@@ -37,10 +38,22 @@ type PhaseGateWindow = Window & {
   __NIDOWAR_PHASE1_STATS__?: Phase1RenderStats;
 };
 
+type VisualMode = 'base-art' | 'terrain-only' | 'roads' | 'lit-final';
+
+interface VisualModeConfig {
+  readonly showRoads: boolean;
+  readonly showDecals: boolean;
+  readonly showProps: boolean;
+  readonly showOccluders: boolean;
+  readonly showLandmarks: boolean;
+  readonly showTorches: boolean;
+  readonly showLighting: boolean;
+}
+
 export interface ViewportOptions {
-  usePixi?: boolean;
   mapWidth?: number;
   mapHeight?: number;
+  onFrameStats?: (stats: Phase1RenderStats) => void;
 }
 
 export class IsometricViewport {
@@ -58,18 +71,19 @@ export class IsometricViewport {
     new URLSearchParams(window.location.search).has('debug');
   private readonly nightLighting = typeof window !== 'undefined' &&
     new URLSearchParams(window.location.search).has('night');
+  private readonly visualMode = this.readVisualMode();
+  private readonly visualModeConfig = this.createVisualModeConfig(this.visualMode);
   private frameCount = 0;
+  private readonly onFrameStats?: (stats: Phase1RenderStats) => void;
 
   constructor(options: ViewportOptions = {}) {
     const mapW = options.mapWidth ?? 50;
     const mapH = options.mapHeight ?? 50;
     this.grid = new TileGrid(mapW, mapH);
-
-    const baseRenderer: IRenderer = options.usePixi
-      ? new PixiRenderer()
-      : new Canvas2DRenderer();
-
-    this.isoRenderer = new IsometricRenderer(baseRenderer);
+    this.camera.x = mapW * 0.5;
+    this.camera.y = mapH * 0.52;
+    this.isoRenderer = new IsometricRenderer(new PixiRenderer());
+    this.onFrameStats = options.onFrameStats;
   }
 
   getCanvas(): HTMLCanvasElement | null {
@@ -81,6 +95,7 @@ export class IsometricViewport {
     const atlases = await this.loadDecorationAtlases();
     this.torchManifest = await loadSpriteManifest('/assets/manifests/torch.json');
     const terrainMaterials = await this.loadTerrainMaterials();
+    const lawnImages = await this.loadLawnImages();
 
     const torchImageUrl = `/assets/${this.torchManifest.image}`;
     const torchImage = await loadImage(torchImageUrl);
@@ -89,7 +104,12 @@ export class IsometricViewport {
       this.grid,
       terrainMaterials,
       this.tileWidth,
-      this.tileHeight
+      this.tileHeight,
+      {
+        showRoads: this.visualModeConfig.showRoads,
+        lawnOnly: this.visualMode === 'base-art',
+        lawnImages,
+      }
     );
     this.tileView = new TileView(
       this.isoRenderer,
@@ -105,7 +125,7 @@ export class IsometricViewport {
     window.addEventListener('resize', () => this.render());
     this.render();
 
-    console.log('[IsometricViewport] Started. Drag to pan, wheel/pinch to zoom, tap to pick.');
+    console.log(`[IsometricViewport] Started in ${this.visualMode} mode. Drag to pan, wheel/pinch to zoom, tap to pick.`);
   }
 
   private async loadTerrainMaterials(): Promise<TerrainMaterialSet> {
@@ -123,13 +143,26 @@ export class IsometricViewport {
     return Object.fromEntries(materials.map((material) => [material.id, material])) as TerrainMaterialSet;
   }
 
+  private async loadLawnImages(): Promise<readonly HTMLImageElement[]> {
+    const urls = [
+      '/assets/sprites/terrain_lawn_a.png',
+      '/assets/sprites/terrain_lawn_b.png',
+      '/assets/sprites/terrain_lawn_c.png',
+    ];
+
+    return Promise.all(urls.map((url) => loadImage(url)));
+  }
+
   private async loadDecorationAtlases(): Promise<ReadonlyMap<string, TileSpriteAtlas>> {
     const entries: Array<[string, string]> = [
       ['meadow_decals', '/assets/manifests/world_meadow_decals.json'],
       ['path_decals', '/assets/manifests/world_path_decals.json'],
       ['forest_decals', '/assets/manifests/world_forest_decals.json'],
-      ['grass_dirt_transitions', '/assets/manifests/grass_dirt_transitions.json'],
       ['rock_props', '/assets/manifests/world_rock_props.json'],
+      ['shrub_props', '/assets/manifests/world_shrub_props.json'],
+      ['tree_clusters', '/assets/manifests/world_tree_clusters.json'],
+      ['tree_singles', '/assets/manifests/world_tree_singles.json'],
+      ['landmarks', '/assets/manifests/world_landmarks.json'],
     ];
     const atlases = new Map<string, TileSpriteAtlas>();
 
@@ -182,9 +215,10 @@ export class IsometricViewport {
     if (!this.tileView || !this.terrainView) return;
 
     const visible = this.getVisibleTiles();
-    const visibleDecals = this.getVisibleDecals(visible);
-    const visibleProps = this.getVisibleProps(visible);
-    const torches = this.grid.getTorches();
+    const visibleDecals = this.visualModeConfig.showDecals ? this.getVisibleDecals(visible) : [];
+    const visibleProps = this.visualModeConfig.showProps ? this.getVisibleProps(visible) : [];
+    const visibleOccluders = this.visualModeConfig.showOccluders ? this.getVisibleOccluders(visible) : [];
+    const torches = this.visualModeConfig.showTorches ? this.grid.getTorches() : [];
     const origin = this.getCenteredMapOrigin();
     const tileWidth = this.getScaledTileWidth();
     const tileHeight = this.getScaledTileHeight();
@@ -197,9 +231,17 @@ export class IsometricViewport {
       this.tileView.drawDecal(decal, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
     }
 
-    for (const prop of visibleProps) {
+    const depthProps = [...visibleProps, ...visibleOccluders]
+      .sort((a, b) => this.getDepthKey(a) - this.getDepthKey(b));
+
+    for (const prop of depthProps) {
       const viewPos = this.camera.worldToView(prop.tileX, prop.tileY);
-      this.tileView.drawProp(prop, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
+      if (this.isOccluder(prop)) {
+        this.tileView.drawOccluderShadow(prop, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
+        this.tileView.drawOccluder(prop, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
+      } else {
+        this.tileView.drawProp(prop, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
+      }
     }
 
     for (const torch of torches) {
@@ -207,20 +249,21 @@ export class IsometricViewport {
       this.tileView.drawTorch(torch, viewPos.x, viewPos.y, tileWidth, tileHeight, origin);
     }
 
-    if (this.nightLighting) {
-      this.isoRenderer.drawNightLighting(
-        '#071025',
-        0.68,
+    if (this.visualModeConfig.showLighting) {
+      this.isoRenderer.drawSceneLighting(createSceneLighting(
+        this.nightLighting ? NIGHT_LIGHTING_PROFILE : DAY_LIGHTING_PROFILE,
         this.getLights(torches, origin, tileWidth, tileHeight)
-      );
+      ));
     }
 
     this.isoRenderer.present();
     this.publishPhase1Stats({
       frameMs: performance.now() - frameStart,
+      visualMode: this.visualMode,
       visibleTiles: visible.length,
       visibleDecals: visibleDecals.length,
       visibleProps: visibleProps.length,
+      visibleOccluders: visibleOccluders.length,
       torches: torches.length,
       ...this.isoRenderer.getRenderStats(),
     });
@@ -236,16 +279,11 @@ export class IsometricViewport {
 
   private getCenteredMapOrigin(): { x: number; y: number } {
     const canvas = this.getCanvas();
-    if (!canvas || !this.terrainView) return { x: 0, y: 0 };
-
-    const bounds = this.terrainView.getBounds();
-    const zoom = this.camera.zoom;
-    const mapWidth = (bounds.maxX - bounds.minX) * zoom;
-    const mapHeight = (bounds.maxY - bounds.minY) * zoom;
+    if (!canvas) return { x: 0, y: 0 };
 
     return {
-      x: Math.round((canvas.width - mapWidth) / 2 - bounds.minX * zoom),
-      y: Math.round((canvas.height - mapHeight) / 2 - bounds.minY * zoom),
+      x: Math.round(canvas.width * 0.5),
+      y: Math.round(canvas.height * 0.5),
     };
   }
 
@@ -279,6 +317,7 @@ export class IsometricViewport {
     const visibleIds = new Set(visibleTiles.map((tile) => tile.id));
 
     return this.grid.getDecals().filter((decal) => {
+      if (!this.visualModeConfig.showRoads && this.isRoadDecal(decal)) return false;
       const tile = this.grid.getTile(decal.tileX, decal.tileY);
       return tile ? visibleIds.has(tile.id) : false;
     });
@@ -291,6 +330,29 @@ export class IsometricViewport {
       const tile = this.grid.getTile(prop.tileX, prop.tileY);
       return tile ? visibleIds.has(tile.id) : false;
     });
+  }
+
+  private getVisibleOccluders(visibleTiles: TileData[]): TileOccluderData[] {
+    const visibleIds = new Set(visibleTiles.map((tile) => tile.id));
+
+    return this.grid.getOccluders().filter((occluder) => {
+      if (!this.visualModeConfig.showLandmarks && occluder.assetKey === 'landmarks') return false;
+      const tile = this.grid.getTile(occluder.tileX, occluder.tileY);
+      return tile ? visibleIds.has(tile.id) : false;
+    });
+  }
+
+  private isRoadDecal(decal: TileDecalData): boolean {
+    return decal.assetKey === 'path_decals';
+  }
+
+  private getDepthKey(prop: TileDecalData | TileOccluderData): number {
+    const bias = this.isOccluder(prop) ? prop.depthBias : 0;
+    return prop.tileX + prop.tileY + prop.offsetX * 0.2 + prop.offsetY * 0.2 + bias;
+  }
+
+  private isOccluder(prop: TileDecalData | TileOccluderData): prop is TileOccluderData {
+    return 'depthBias' in prop;
   }
 
   private getLights(
@@ -315,7 +377,9 @@ export class IsometricViewport {
 
   private publishPhase1Stats(stats: Phase1RenderStats): void {
     (window as PhaseGateWindow).__NIDOWAR_PHASE1_STATS__ = stats;
+    document.documentElement.dataset.nidowarVisualMode = this.visualMode;
     document.documentElement.dataset.nidowarPhase1Stats = JSON.stringify(stats);
+    this.onFrameStats?.(stats);
 
     if (!this.debugPerf) return;
 
@@ -345,5 +409,62 @@ export class IsometricViewport {
 
   private getScaledTileHeight(): number {
     return this.tileHeight * this.camera.zoom;
+  }
+
+  private readVisualMode(): VisualMode {
+    if (typeof window === 'undefined') return 'lit-final';
+
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('visual') ?? params.get('visualMode') ?? params.get('mode');
+    if (raw === 'base-art' || raw === 'terrain-only' || raw === 'roads' || raw === 'lit-final') return raw;
+    return 'lit-final';
+  }
+
+  private createVisualModeConfig(mode: VisualMode): VisualModeConfig {
+    if (mode === 'base-art') {
+      return {
+        showRoads: false,
+        showDecals: false,
+        showProps: false,
+        showOccluders: false,
+        showLandmarks: false,
+        showTorches: false,
+        showLighting: false,
+      };
+    }
+
+    if (mode === 'terrain-only') {
+      return {
+        showRoads: false,
+        showDecals: true,
+        showProps: false,
+        showOccluders: false,
+        showLandmarks: false,
+        showTorches: false,
+        showLighting: false,
+      };
+    }
+
+    if (mode === 'roads') {
+      return {
+        showRoads: true,
+        showDecals: true,
+        showProps: true,
+        showOccluders: true,
+        showLandmarks: false,
+        showTorches: false,
+        showLighting: false,
+      };
+    }
+
+    return {
+      showRoads: true,
+      showDecals: true,
+      showProps: true,
+      showOccluders: true,
+      showLandmarks: true,
+      showTorches: true,
+      showLighting: true,
+    };
   }
 }

@@ -7,7 +7,7 @@
  */
 
 import type { IRenderer } from './IRenderer';
-import type { RadialLightDrawOptions, RenderLayer, RenderStats } from './IRenderer';
+import type { RenderLayer, RenderStats, SceneLightingDrawOptions } from './IRenderer';
 import { worldToScreen, DEFAULT_TILE } from '@engine/isometric';
 import type { LoadedSpriteManifest } from '@engine/assets/AssetManifest';
 import type { Point } from '@engine/isometric';
@@ -47,7 +47,9 @@ export class IsometricRenderer {
     tileHeight: number = DEFAULT_TILE.height,
     offset: Point = { x: 0, y: 0 },
     spriteScale?: number,
-    layer: RenderLayer = 'prop'
+    layer: RenderLayer = 'prop',
+    alpha?: number,
+    tint?: string
   ): void {
     const pos = worldToScreen(worldX, worldY, tileWidth, tileHeight);
     const frame = manifest.frames[frameIndex];
@@ -60,6 +62,8 @@ export class IsometricRenderer {
       screenX: pos.x + offset.x,
       screenY: pos.y + offset.y,
       scale: renderScale,
+      alpha,
+      tint,
       layer,
     });
   }
@@ -69,23 +73,23 @@ export class IsometricRenderer {
     screenX: number,
     screenY: number,
     scale = 1,
-    layer: RenderLayer = 'terrain'
+    layer: RenderLayer = 'terrain',
+    alpha?: number,
+    tint?: string
   ): void {
     this.inner.drawImage({
       image,
       screenX,
       screenY,
       scale,
+      alpha,
+      tint,
       layer,
     });
   }
 
-  drawNightLighting(
-    ambientColor: string,
-    ambientAlpha: number,
-    lights: RadialLightDrawOptions[]
-  ): void {
-    this.inner.drawNightLighting(ambientColor, ambientAlpha, lights);
+  drawSceneLighting(options: SceneLightingDrawOptions): void {
+    this.inner.drawSceneLighting(options);
   }
 
   getRenderStats(): RenderStats {

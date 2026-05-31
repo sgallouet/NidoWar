@@ -25,7 +25,7 @@
 
 ## 2026-05 - Phase 1 Render Layer Hardening
 
-**Decision**: Keep the Pixi adapter behind `IRenderer`, but require persistent render layers and pooled sprites for map rendering.
+**Decision**: Keep the Pixi adapter behind the small renderer contract, require persistent render layers and pooled sprites for map rendering, and treat Pixi as the only supported runtime renderer.
 
 **Rationale**:
 - The terrain visual prototype added decals, props, torches, and lighting. Destroying and recreating Pixi display objects every render would create avoidable GC pressure during camera pan/zoom.
@@ -36,8 +36,9 @@
 - Renderer implementations must expose draw-call and object-pool stats.
 - New visual categories should target an explicit render layer.
 - Phase 1 cannot be closed until the stats are recorded in the build plan for desktop and mobile-sized viewport QA.
+- Do not maintain a Canvas fallback path. Simpler code that works in the active renderer is preferred over parallel renderer behavior.
 
-**Status**: Approved for the Phase 1 hardening branch.
+**Status**: Approved for the Phase 1 hardening branch. Updated 2026-05-31 to remove the Canvas fallback.
 
 ---
 
@@ -58,6 +59,45 @@
 - Phase 2 starts with terrain/prop/lighting art pipeline work before gameplay-heavy movement.
 
 **Status**: Approved as the Phase 2 planning baseline.
+
+---
+
+## 2026-05-31 - Brush-Based Terrain Integration
+
+**Decision**: Do not rely on generated custom transition art for terrain integration. NidoWar terrain integration is built from reusable brush components plus runtime controls: composition masks, alpha, tint, scale, density, placement, contact shadows, and separate decals/props.
+
+**Rationale**:
+- Generated transition art that tries to connect one exact terrain material to another exact terrain material is brittle and usually fails to match both sides.
+- The desired reference quality comes from authored composition, painterly pixel detail, soft overlap, clustered props, and controlled lighting, not from perfect directional transition pieces.
+- Reusable brush components give the renderer more control over item size, color, shadowing, placement density, and in-game iteration speed.
+
+**Constraints enforced**:
+- Do not request new art prompts for grass-to-dirt, dirt-to-stone, shore-to-grass, or similar exact material transition sheets.
+- Generate single-purpose components instead: dirt wear, grass bite marks, loose stones, weeds, moss, cracks, roots, wall/fence pieces, prop bases, and shadow/contact elements.
+- Runtime code should integrate those components through mask-driven placement, alpha, tint, scale, layering, and contact shadows.
+- Reference games can inform the target quality and composition density, but prompts must describe the concrete NidoWar traits directly rather than naming a game style.
+
+**Status**: Approved as the revised Phase 2 reset strategy.
+
+---
+
+## 2026-05-31 - Forest-Framed Base Art Gate
+
+**Decision**: The first Phase 2 reset gate is no longer a bare meadow-only comparison. It must include target-like macro composition: a calm readable clearing framed by forest-border massing, clustered rocks, restrained shrubs, subtle dirt wear, contact shadows, and directional shadows. Roads, walls, landmarks, torches, water, mountains, and night lighting remain later layers.
+
+**Rationale**:
+- The target reference reads well because of its macro hierarchy: quiet center, dense forest edges, clustered rocks, and physical shadows. Removing trees entirely makes the comparison unfair and pushes the implementation toward noisy ground texture instead of authored composition.
+- A 4X world map needs readable open areas for units, roads, settlements, markers, and UI, but it also needs strong terrain masses to define regions and movement context.
+- Forests should establish border mass and depth early. Roads and walls should then be composed into that accepted base instead of trying to compensate for weak terrain composition.
+
+**Constraints enforced**:
+- Do not scatter trees uniformly. Forests in the base gate are edge masses, clumps, and sparse accents.
+- Do not fill the clearing with high-contrast grass noise. The center must be calmer than the borders.
+- Dirt wear must be subtle and blended; large orange cracked blobs are not accepted for the base gate.
+- Rocks should cluster near forest edges, dirt wear, and future structure/road anchors rather than appearing evenly sprinkled.
+- The map edge/void must not be visible in acceptance screenshots.
+
+**Status**: Approved as the updated 2.R2-2.R4 direction.
 
 ---
 *All future rendering decisions must be recorded here before code is written.*

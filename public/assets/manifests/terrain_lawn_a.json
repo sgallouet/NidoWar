@@ -1,0 +1,10 @@
+{
+  "name": "terrain_lawn_a",
+  "image": "sprites/terrain_lawn_a.png",
+  "frameSize": { "w": 1254, "h": 1254 },
+  "frames": [
+    { "x": 0, "y": 0, "w": 1254, "h": 1254, "duration": 0, "center": { "x": 627, "y": 627 } }
+  ],
+  "scale": 1,
+  "anchor": { "x": 0.5, "y": 0.5 }
+}

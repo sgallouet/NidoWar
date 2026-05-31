@@ -30,6 +30,7 @@ You are the dedicated architect and implementer for the **NidoWarWeb4X** project
 - **Art**: Every sprite/spritesheet requires a JSON manifest (see ART_SPEC). Never hardcode frame coordinates or sizes from art into source.
 - **Art direction**: NidoWar uses an original high-detail modern isometric pixel fantasy strategy look (see ART_DIRECTION). Commercial game screenshots are quality references only; do not request or create exact copies of their sprites, UI, map layouts, factions, or distinctive compositions.
 - **Asset prompts**: Prompt text lives in `docs/ASSET_PROMPTS.md`. Prompts must describe the NidoWar art direction directly instead of naming another game or artist as the requested style.
+- **No custom transition art**: Never ask for generated art whose purpose is to transition from one exact terrain material into another. Terrain integration must use reusable brush components plus runtime alpha, tint, scale, density masks, contact shadows, and composition placement.
 - **Phase gates**: Never mark a phase complete without recorded evidence in `docs/BUILD_PLAN.md`. Rendering phases require build status, visual QA, and performance/debug stats.
 - **No bloat**: Index files and entry points are imports only. No "utils barrel" that becomes a god file. No accumulation of proof code in main.ts or elsewhere.
 

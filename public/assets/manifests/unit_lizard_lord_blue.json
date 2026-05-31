@@ -1,0 +1,26 @@
+﻿{
+    "name":  "unit_lizard_lord_blue",
+    "image":  "sprites/unit_lizard_lord_blue.png",
+    "frameSize":  {
+                      "w":  1254,
+                      "h":  1254
+                  },
+    "frames":  [
+                   {
+                       "x":  0,
+                       "y":  0,
+                       "w":  1254,
+                       "h":  1254,
+                       "duration":  0,
+                       "center":  {
+                                      "x":  627,
+                                      "y":  978
+                                  }
+                   }
+               ],
+    "scale":  0.09,
+    "anchor":  {
+                   "x":  0.5,
+                   "y":  0.78
+               }
+}

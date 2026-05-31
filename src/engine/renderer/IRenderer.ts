@@ -9,6 +9,8 @@ export interface SpriteDrawOptions {
   screenX: number;
   screenY: number;
   scale?: number;
+  alpha?: number;
+  tint?: string;
   layer?: RenderLayer;
 }
 
@@ -17,6 +19,8 @@ export interface ImageDrawOptions {
   screenX: number;
   screenY: number;
   scale?: number;
+  alpha?: number;
+  tint?: string;
   layer?: RenderLayer;
 }
 
@@ -26,6 +30,16 @@ export interface RadialLightDrawOptions {
   radius: number;
   color: string;
   intensity: number;
+  coreRadius?: number;
+  coreIntensity?: number;
+}
+
+export interface SceneLightingDrawOptions {
+  ambientColor: string;
+  ambientAlpha: number;
+  gradeColor: string;
+  gradeAlpha: number;
+  lights: RadialLightDrawOptions[];
 }
 
 export interface RenderStats {
@@ -45,7 +59,7 @@ export interface IRenderer {
   drawTile(worldX: number, worldY: number, color: string): void;
   drawImage(options: ImageDrawOptions): void;
   drawSprite(options: SpriteDrawOptions): void;
-  drawNightLighting(ambientColor: string, ambientAlpha: number, lights: RadialLightDrawOptions[]): void;
+  drawSceneLighting(options: SceneLightingDrawOptions): void;
   getRenderStats(): RenderStats;
   getCanvas(): HTMLCanvasElement | null;
   present(): void;

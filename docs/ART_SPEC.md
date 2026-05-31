@@ -3,13 +3,15 @@
 All graphics are pixel art sprites, spritesheets, or manifest-declared terrain materials.
 
 ## Strict Requirements
-- Art is always provided transparent when it is a sprite, prop, decal, unit, building, effect, or transition piece. Never attempt to auto-remove backgrounds in code or by hand. Ask for a corrected export if alpha is missing.
+- Checked-in runtime art is always transparent when it is a sprite, prop, decal, unit, building, effect, reusable overlay, or brush component.
+- Generated source sheets should use a flat `#ff00ff` chroma-key background when the generator cannot reliably export alpha. Remove that key locally before committing runtime assets, then reject or regenerate if dark matte pixels or magenta fringes remain.
 - Opaque terrain material textures are allowed only for base materials such as grass, dirt, stone, water, and forest floor.
 - The visual target is defined in `docs/ART_DIRECTION.md`: original high-detail modern isometric pixel fantasy strategy art with dense terrain storytelling, painterly pixel clusters, dramatic warm/cool lighting, and strong readable silhouettes.
 - Reference screenshots from commercial games are a quality bar only. Do not request or create exact copies of their sprites, structures, UI, faction marks, map layouts, or distinctive compositions.
 - Smartphone-first readability still matters: dense art is allowed, but units, interactables, roads, obstacles, and selection states must stay legible at small sizes.
 - World map and battle arena art must share the same palette logic, lighting language, perspective discipline, and sprite density.
-- A plain terrain texture with scattered decals is not accepted as final art. Terrain must be built from materials, transitions, clustered decals, medium props, tall occluders, contact shadows, and lighting.
+- A plain terrain texture with scattered decals is not accepted as final art. Terrain must be built from materials, authored composition masks, alpha-blended ground overlays, clustered decals, medium props, tall occluders, contact shadows, and lighting.
+- Do not create custom art whose purpose is to transition from one exact terrain material into another. Use reusable brush components instead: dirt wear, grass bite marks, weeds, stones, cracks, moss, prop bases, contact shadows, runtime tint, runtime scale, runtime alpha, and placement masks.
 
 ## Sprite Manifest (JSON) - Mandatory
 
@@ -46,7 +48,7 @@ Every sprite or spritesheet must have a matching `.json` sidecar file that defin
 - Phase 2 terrain material ids are `grass`, `dirt`, `cobblestone`, `forest`, and `water`.
 - Source files may be placeholder PNGs while the pipeline is under construction, but replacement art must keep the manifest name and material id stable unless the code and plan are updated together.
 - Material textures should be seamless square PNGs. Current placeholders are 128x128; final art may use 256x256 or 512x512 if performance evidence stays healthy.
-- Transition sprites, prop atlases, light source sprites, and contact shadows must remain transparent and manifest-backed.
+- Reusable overlays, decals, prop atlases, light source sprites, and contact shadows must remain transparent and manifest-backed.
 
 ## Asset Prompt Source
 - Use `docs/ASSET_PROMPTS.md` as the starting prompt deck for generated sprites, terrain textures, decals, world props, battle arena tiles, and unit sprites.

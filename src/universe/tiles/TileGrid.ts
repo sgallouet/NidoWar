@@ -1,5 +1,5 @@
 import { MapModel } from './MapModel';
-import type { TileData, TileDecalData, TileLightData } from './TileData';
+import type { TileData, TileDecalData, TileLightData, TileOccluderData } from './TileData';
 import type { TerrainBlend } from './TerrainMaterial';
 
 export class TileGrid {
@@ -25,15 +25,19 @@ export class TileGrid {
     return this.map.getProps();
   }
 
+  getOccluders(): TileOccluderData[] {
+    return this.map.getOccluders();
+  }
+
   getTorches(): TileLightData[] {
     return this.map.getTorches();
   }
 
-  getDirtBlend(x: number, y: number): number {
-    return this.map.getDirtBlend(x, y);
+  getDirtBlend(x: number, y: number, includeRoads = true): number {
+    return this.map.getDirtBlend(x, y, includeRoads);
   }
 
-  getTerrainBlend(x: number, y: number): TerrainBlend {
-    return this.map.getTerrainBlend(x, y);
+  getTerrainBlend(x: number, y: number, includeRoads = true): TerrainBlend {
+    return this.map.getTerrainBlend(x, y, includeRoads);
   }
 }

@@ -20,6 +20,13 @@ export interface TileDecalData {
   readonly offsetY: number;
   readonly frameIndex: number;
   readonly scale: number;
+  readonly alpha?: number;
+  readonly tint?: string;
+}
+
+export interface TileOccluderData extends TileDecalData {
+  readonly shadowScale: number;
+  readonly depthBias: number;
 }
 
 export interface TileLightData {

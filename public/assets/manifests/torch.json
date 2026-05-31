@@ -1,9 +1,26 @@
 {
   "name": "torch",
   "image": "sprites/torch.png",
+  "frameSize": {
+    "w": 122,
+    "h": 218
+  },
   "frames": [
-    { "x": 0, "y": 0, "w": 32, "h": 48, "duration": 0, "center": { "x": 16, "y": 42 } }
+    {
+      "x": 820,
+      "y": 32,
+      "w": 122,
+      "h": 218,
+      "duration": 0,
+      "center": {
+        "x": 61,
+        "y": 203
+      }
+    }
   ],
-  "scale": 1.0,
-  "anchor": { "x": 0.5, "y": 0.875 }
+  "scale": 0.36,
+  "anchor": {
+    "x": 0.5,
+    "y": 0.93
+  }
 }

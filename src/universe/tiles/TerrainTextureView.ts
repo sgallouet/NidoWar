@@ -1,7 +1,7 @@
 import { screenToWorld, worldToScreen, type Point } from '@engine/isometric';
 import type { IsometricRenderer } from '@engine/renderer/IsometricRenderer';
 import type { TileGrid } from './TileGrid';
-import { MATERIAL_IDS, type TerrainMaterialId, type TerrainMaterialSet } from './TerrainMaterial';
+import { MATERIAL_IDS, createTerrainBlend, type TerrainBlend, type TerrainMaterialId, type TerrainMaterialSet } from './TerrainMaterial';
 import { resolveTerrainTransition, type TerrainTransition } from './TerrainTransition';
 
 interface TerrainBounds {
@@ -17,7 +17,19 @@ interface TextureSampler {
   height: number;
 }
 
+interface TerrainChunk {
+  canvas: HTMLCanvasElement;
+  minX: number;
+  minY: number;
+}
+
 type TerrainSamplers = Record<TerrainMaterialId, TextureSampler>;
+
+interface TerrainTextureOptions {
+  readonly showRoads?: boolean;
+  readonly lawnOnly?: boolean;
+  readonly lawnImages?: readonly HTMLImageElement[];
+}
 
 const MATERIAL_OFFSETS: Record<TerrainMaterialId, { x: number; y: number }> = {
   grass: { x: 0, y: 0 },
@@ -27,16 +39,32 @@ const MATERIAL_OFFSETS: Record<TerrainMaterialId, { x: number; y: number }> = {
   water: { x: -97, y: -29 },
 };
 
+const MATERIAL_SAMPLE_SCALE: Record<TerrainMaterialId, number> = {
+  grass: 1,
+  dirt: 1,
+  cobblestone: 1,
+  forest: 1,
+  water: 1,
+};
+
 export class TerrainTextureView {
   private readonly bounds: TerrainBounds;
-  private readonly surfaceResolution = 0.35;
-  private surface: HTMLCanvasElement | null = null;
+  private readonly chunkSize = 256;
+  private readonly chunkOverlap = 2;
+  private readonly viewportPadding = 96;
+  private readonly surfaceResolution = 1;
+  private readonly chunks = new Map<string, TerrainChunk>();
+  private readonly prewarmQueue: Array<{ x: number; y: number }> = [];
+  private prewarmScheduled = false;
+  private samplers: TerrainSamplers | null = null;
+  private lawnSamplers: readonly TextureSampler[] | null = null;
 
   constructor(
     private readonly grid: TileGrid,
     private readonly materials: TerrainMaterialSet,
     private readonly tileWidth: number,
-    private readonly tileHeight: number
+    private readonly tileHeight: number,
+    private readonly options: TerrainTextureOptions = {}
   ) {
     this.bounds = this.createBounds();
   }
@@ -46,23 +74,63 @@ export class TerrainTextureView {
   }
 
   draw(renderer: IsometricRenderer, origin: Point, zoom: number, camera: Point): void {
-    const surface = this.getSurface();
-    const cameraOffset = worldToScreen(camera.x, camera.y, this.tileWidth, this.tileHeight);
+    const canvas = renderer.getCanvas();
+    if (!canvas) return;
 
-    renderer.drawScreenImage(
-      surface,
-      origin.x + (this.bounds.minX - cameraOffset.x) * zoom,
-      origin.y + (this.bounds.minY - cameraOffset.y) * zoom,
-      zoom / this.surfaceResolution,
-      'terrain'
+    const cameraOffset = worldToScreen(camera.x, camera.y, this.tileWidth, this.tileHeight);
+    const visibleMinX = Math.max(
+      this.bounds.minX,
+      cameraOffset.x - origin.x / zoom - this.viewportPadding
     );
+    const visibleMinY = Math.max(
+      this.bounds.minY,
+      cameraOffset.y - origin.y / zoom - this.viewportPadding
+    );
+    const visibleMaxX = Math.min(
+      this.bounds.maxX,
+      cameraOffset.x + (canvas.width - origin.x) / zoom + this.viewportPadding
+    );
+    const visibleMaxY = Math.min(
+      this.bounds.maxY,
+      cameraOffset.y + (canvas.height - origin.y) / zoom + this.viewportPadding
+    );
+    const startChunkX = Math.floor((visibleMinX - this.bounds.minX) / this.chunkSize);
+    const endChunkX = Math.floor((visibleMaxX - this.bounds.minX) / this.chunkSize);
+    const startChunkY = Math.floor((visibleMinY - this.bounds.minY) / this.chunkSize);
+    const endChunkY = Math.floor((visibleMaxY - this.bounds.minY) / this.chunkSize);
+
+    for (let chunkY = startChunkY; chunkY <= endChunkY; chunkY++) {
+      for (let chunkX = startChunkX; chunkX <= endChunkX; chunkX++) {
+        const chunk = this.getChunk(chunkX, chunkY);
+
+        renderer.drawScreenImage(
+          chunk.canvas,
+          origin.x + (chunk.minX - cameraOffset.x) * zoom,
+          origin.y + (chunk.minY - cameraOffset.y) * zoom,
+          zoom / this.surfaceResolution,
+          'terrain'
+        );
+      }
+    }
+
+    this.schedulePrewarm(startChunkX, endChunkX, startChunkY, endChunkY);
   }
 
-  private getSurface(): HTMLCanvasElement {
-    if (this.surface) return this.surface;
+  private getChunk(chunkX: number, chunkY: number): TerrainChunk {
+    const key = `${chunkX}:${chunkY}`;
+    const cached = this.chunks.get(key);
+    if (cached) return cached;
 
-    const width = Math.ceil((this.bounds.maxX - this.bounds.minX) * this.surfaceResolution);
-    const height = Math.ceil((this.bounds.maxY - this.bounds.minY) * this.surfaceResolution);
+    const baseMinX = this.bounds.minX + chunkX * this.chunkSize;
+    const baseMinY = this.bounds.minY + chunkY * this.chunkSize;
+    const baseMaxX = Math.min(this.bounds.maxX, baseMinX + this.chunkSize);
+    const baseMaxY = Math.min(this.bounds.maxY, baseMinY + this.chunkSize);
+    const minX = Math.max(this.bounds.minX, baseMinX - this.chunkOverlap);
+    const minY = Math.max(this.bounds.minY, baseMinY - this.chunkOverlap);
+    const maxX = Math.min(this.bounds.maxX, baseMaxX + this.chunkOverlap);
+    const maxY = Math.min(this.bounds.maxY, baseMaxY + this.chunkOverlap);
+    const width = Math.ceil((maxX - minX) * this.surfaceResolution);
+    const height = Math.ceil((maxY - minY) * this.surfaceResolution);
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -71,12 +139,13 @@ export class TerrainTextureView {
     if (!ctx) throw new Error('[TerrainTextureView] Failed to create terrain canvas');
 
     const pixels = ctx.createImageData(width, height);
-    const samplers = this.createSamplers();
+    const samplers = this.getSamplers();
+    const lawnSamplers = this.options.lawnOnly ? this.getLawnSamplers() : null;
 
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const screenX = x / this.surfaceResolution + this.bounds.minX;
-        const screenY = y / this.surfaceResolution + this.bounds.minY;
+        const screenX = x / this.surfaceResolution + minX;
+        const screenY = y / this.surfaceResolution + minY;
         const world = screenToWorld(screenX, screenY, this.tileWidth, this.tileHeight);
         const index = (y * width + x) * 4;
 
@@ -85,14 +154,15 @@ export class TerrainTextureView {
           continue;
         }
 
-        const mask = this.getTransitionMask(world.x, world.y, screenX, screenY);
-        const transition = resolveTerrainTransition(this.grid.getTerrainBlend(world.x, world.y), mask);
-        const color = this.gradeTerrainColor(
-          this.sampleBlend(samplers, transition, screenX, screenY),
-          transition,
-          screenX,
-          screenY
-        );
+        const color = lawnSamplers
+          ? this.gradeLawnColor(
+            this.sampleLawnBlend(lawnSamplers, world.x, world.y, screenX, screenY),
+            world.x,
+            world.y,
+            screenX,
+            screenY
+          )
+          : this.sampleTerrainColor(samplers, world.x, world.y, screenX, screenY);
 
         pixels.data[index] = color[0];
         pixels.data[index + 1] = color[1];
@@ -102,8 +172,48 @@ export class TerrainTextureView {
     }
 
     ctx.putImageData(pixels, 0, 0);
-    this.surface = canvas;
-    return canvas;
+    const chunk = { canvas, minX, minY };
+    this.chunks.set(key, chunk);
+    return chunk;
+  }
+
+  private schedulePrewarm(startChunkX: number, endChunkX: number, startChunkY: number, endChunkY: number): void {
+    const margin = 2;
+
+    for (let chunkY = startChunkY - margin; chunkY <= endChunkY + margin; chunkY++) {
+      for (let chunkX = startChunkX - margin; chunkX <= endChunkX + margin; chunkX++) {
+        if (!this.isValidChunk(chunkX, chunkY)) continue;
+        if (chunkX >= startChunkX && chunkX <= endChunkX && chunkY >= startChunkY && chunkY <= endChunkY) continue;
+        if (this.chunks.has(`${chunkX}:${chunkY}`)) continue;
+        if (this.prewarmQueue.some((entry) => entry.x === chunkX && entry.y === chunkY)) continue;
+        this.prewarmQueue.push({ x: chunkX, y: chunkY });
+      }
+    }
+
+    this.prewarmNextChunk();
+  }
+
+  private prewarmNextChunk(): void {
+    if (this.prewarmScheduled || this.prewarmQueue.length === 0) return;
+
+    this.prewarmScheduled = true;
+    window.setTimeout(() => {
+      this.prewarmScheduled = false;
+      const next = this.prewarmQueue.shift();
+      if (next) {
+        this.getChunk(next.x, next.y);
+      }
+      this.prewarmNextChunk();
+    }, 0);
+  }
+
+  private isValidChunk(chunkX: number, chunkY: number): boolean {
+    const minX = this.bounds.minX + chunkX * this.chunkSize;
+    const minY = this.bounds.minY + chunkY * this.chunkSize;
+    return minX < this.bounds.maxX &&
+      minY < this.bounds.maxY &&
+      minX + this.chunkSize > this.bounds.minX &&
+      minY + this.chunkSize > this.bounds.minY;
   }
 
   private createBounds(): TerrainBounds {
@@ -130,6 +240,26 @@ export class TerrainTextureView {
       forest: this.createSampler(this.materials.forest.image),
       water: this.createSampler(this.materials.water.image),
     };
+  }
+
+  private getSamplers(): TerrainSamplers {
+    if (!this.samplers) {
+      this.samplers = this.createSamplers();
+    }
+
+    return this.samplers;
+  }
+
+  private getLawnSamplers(): readonly TextureSampler[] {
+    if (!this.lawnSamplers) {
+      const images = this.options.lawnImages ?? [];
+      if (images.length < 3) {
+        throw new Error('[TerrainTextureView] Lawn-only mode requires three lawn textures');
+      }
+      this.lawnSamplers = images.slice(0, 3).map((image) => this.createSampler(image));
+    }
+
+    return this.lawnSamplers;
   }
 
   private createSampler(image: HTMLImageElement): TextureSampler {
@@ -163,13 +293,91 @@ export class TerrainTextureView {
       if (weight <= 0) continue;
 
       const offset = MATERIAL_OFFSETS[id];
-      const sample = this.sample(samplers[id], screenX + offset.x, screenY + offset.y);
+      const scale = MATERIAL_SAMPLE_SCALE[id];
+      const sample = this.sample(
+        samplers[id],
+        screenX * scale + offset.x,
+        screenY * scale + offset.y
+      );
       color[0] += sample[0] * weight;
       color[1] += sample[1] * weight;
       color[2] += sample[2] * weight;
     }
 
     return [this.clamp(color[0]), this.clamp(color[1]), this.clamp(color[2])];
+  }
+
+  private sampleTerrainColor(
+    samplers: TerrainSamplers,
+    worldX: number,
+    worldY: number,
+    screenX: number,
+    screenY: number
+  ): [number, number, number] {
+    const blend = this.getVisibleTerrainBlend(worldX, worldY);
+    const mask = this.getTransitionMask(worldX, worldY, screenX, screenY);
+    const transition = resolveTerrainTransition(blend, mask);
+
+    return this.gradeTerrainColor(
+      this.sampleBlend(samplers, transition, screenX, screenY),
+      transition,
+      screenX,
+      screenY
+    );
+  }
+
+  private sampleLawnBlend(
+    samplers: readonly TextureSampler[],
+    worldX: number,
+    worldY: number,
+    screenX: number,
+    screenY: number
+  ): [number, number, number] {
+    const broad = this.valueNoise(worldX * 0.11 - 4.3, worldY * 0.11 + 7.9, 1301);
+    const mid = this.valueNoise(worldX * 0.28 + 12.1, worldY * 0.28 - 8.4, 1303);
+    const soft = this.valueNoise(worldX * 0.055 + 3.7, worldY * 0.055 + 2.1, 1307);
+    const weights = [
+      0.42 + (1 - broad) * 0.22,
+      0.32 + broad * 0.2,
+      0.24 + mid * 0.16 + soft * 0.08,
+    ];
+    const total = weights[0] + weights[1] + weights[2];
+    const samples = [
+      this.sample(samplers[0], screenX * 0.82 + 37, screenY * 0.82 - 61),
+      this.sample(samplers[1], screenX * 0.72 - 281, screenY * 0.72 + 163),
+      this.sample(samplers[2], screenX * 0.94 + 521, screenY * 0.94 - 349),
+    ];
+    const color: [number, number, number] = [0, 0, 0];
+
+    for (let i = 0; i < samples.length; i++) {
+      const weight = weights[i] / total;
+      color[0] += samples[i][0] * weight;
+      color[1] += samples[i][1] * weight;
+      color[2] += samples[i][2] * weight;
+    }
+
+    return [this.clamp(color[0]), this.clamp(color[1]), this.clamp(color[2])];
+  }
+
+  private gradeLawnColor(
+    color: [number, number, number],
+    worldX: number,
+    worldY: number,
+    screenX: number,
+    screenY: number
+  ): [number, number, number] {
+    const broad = this.valueNoise(worldX * 0.075, worldY * 0.075, 1409);
+    const mid = this.valueNoise(worldX * 0.21 - 5.6, worldY * 0.21 + 2.8, 1417);
+    let result = color;
+
+    result = this.mixColor(result, [108, 137, 58], 0.1);
+    result = this.lighten(result, (broad - 0.5) * 4 + (mid - 0.5) * 1.6);
+
+    const worn = Math.max(0, this.valueNoise(worldX * 0.18 + 2.4, worldY * 0.18 - 11.8, 1423) - 0.68);
+    result = this.mixColor(result, [118, 118, 71], worn * 0.1);
+
+    const vignette = this.valueNoise(screenX * 0.006, screenY * 0.006, 1427);
+    return this.lighten(result, (vignette - 0.5) * 1.2);
   }
 
   private gradeTerrainColor(
@@ -183,17 +391,22 @@ export class TerrainTextureView {
     const speckle = this.hash(screenX, screenY, 53) / 0xffffffff;
     let result = color;
 
-    result = this.lighten(result, (finePatch - 0.5) * 10);
-    result = this.mixColor(result, [57, 86, 73], Math.max(0, broadPatch - 0.58) * 0.22);
+    result = this.lighten(result, (finePatch - 0.5) * 1.4);
+    result = this.mixColor(result, [43, 61, 49], Math.max(0, broadPatch - 0.68) * 0.025);
     result = this.applyTransitionAccent(result, transition, speckle);
 
+    if (transition.blend.grass > 0.55) {
+      result = this.mixColor(result, [112, 139, 69], transition.blend.grass * 0.1);
+      result = this.lighten(result, 4 * transition.blend.grass);
+    }
+
     if (transition.blend.water > 0.2) {
-      result = this.mixColor(result, [38, 83, 96], transition.blend.water * 0.18);
+      result = this.mixColor(result, [38, 83, 96], transition.blend.water * 0.1);
       result = this.lighten(result, speckle > 0.965 ? 42 : 0);
     }
 
     if (transition.blend.cobblestone > 0.28) {
-      result = this.mixColor(result, [193, 178, 138], transition.blend.cobblestone * 0.12);
+      result = this.mixColor(result, [193, 178, 138], transition.blend.cobblestone * 0.06);
     }
 
     return result;
@@ -207,20 +420,20 @@ export class TerrainTextureView {
     const amount = transition.accentAmount;
     const pair = [transition.primary, transition.secondary].sort().join(':');
     let accent: [number, number, number] = [177, 150, 78];
-    let strength = amount * 0.18;
+    let strength = amount * 0.06;
 
     if (pair.includes('water')) {
       accent = speckle > 0.72 ? [137, 169, 151] : [48, 68, 65];
-      strength = amount * 0.34;
+      strength = amount * 0.14;
     } else if (pair.includes('cobblestone')) {
       accent = speckle > 0.52 ? [193, 177, 132] : [74, 78, 74];
-      strength = amount * 0.28;
+      strength = amount * 0.1;
     } else if (pair.includes('forest')) {
       accent = speckle > 0.62 ? [93, 122, 64] : [34, 64, 54];
-      strength = amount * 0.3;
+      strength = amount * 0.1;
     } else if (pair.includes('dirt')) {
       accent = speckle > 0.5 ? [181, 138, 73] : [94, 66, 48];
-      strength = amount * 0.24;
+      strength = amount * 0.09;
     }
 
     return this.mixColor(color, accent, strength);
@@ -231,6 +444,18 @@ export class TerrainTextureView {
     const fine = this.hash(screenX, screenY, 109) / 0xffffffff;
 
     return Math.max(0, Math.min(1, broad * 0.72 + fine * 0.28));
+  }
+
+  private getVisibleTerrainBlend(worldX: number, worldY: number): TerrainBlend {
+    const blend = this.grid.getTerrainBlend(worldX, worldY, this.options.showRoads !== false);
+    if (this.options.showRoads !== false || blend.cobblestone <= 0) return blend;
+
+    return createTerrainBlend({
+      ...blend,
+      dirt: blend.dirt + blend.cobblestone * 0.72,
+      grass: blend.grass + blend.cobblestone * 0.28,
+      cobblestone: 0,
+    });
   }
 
   private isInsideMap(x: number, y: number): boolean {
