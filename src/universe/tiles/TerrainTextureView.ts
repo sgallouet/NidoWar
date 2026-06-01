@@ -23,12 +23,34 @@ interface TerrainChunk {
   minY: number;
 }
 
+interface ControlSurface {
+  canvas: HTMLCanvasElement;
+  minX: number;
+  minY: number;
+  boardWidth: number;
+  boardHeight: number;
+  resolution: number;
+}
+
 type TerrainSamplers = Record<TerrainMaterialId, TextureSampler>;
 
 interface TerrainTextureOptions {
   readonly showRoads?: boolean;
   readonly lawnOnly?: boolean;
   readonly lawnImages?: readonly HTMLImageElement[];
+  readonly dirtImage?: HTMLImageElement;
+  readonly controlMaskImage?: HTMLImageElement;
+}
+
+interface LawnSamplers {
+  lawn: readonly TextureSampler[];
+  dirt: TextureSampler;
+  controlMask: TextureSampler;
+}
+
+interface ControlMaskSample {
+  readonly grass: boolean;
+  readonly shade: number;
 }
 
 const MATERIAL_OFFSETS: Record<TerrainMaterialId, { x: number; y: number }> = {
@@ -53,11 +75,17 @@ export class TerrainTextureView {
   private readonly chunkOverlap = 2;
   private readonly viewportPadding = 96;
   private readonly surfaceResolution = 1;
+  private readonly controlSurfaceResolution = 2;
+  private readonly controlSurfaceMaxPixels = 8_000_000;
+  private readonly controlSurfaceCoverZoom = 0.56;
   private readonly chunks = new Map<string, TerrainChunk>();
   private readonly prewarmQueue: Array<{ x: number; y: number }> = [];
   private prewarmScheduled = false;
   private samplers: TerrainSamplers | null = null;
-  private lawnSamplers: readonly TextureSampler[] | null = null;
+  private lawnSamplers: LawnSamplers | null = null;
+  private controlBoardWidth = 2320;
+  private controlBoardHeight = 1306;
+  private controlSurface: ControlSurface | null = null;
 
   constructor(
     private readonly grid: TileGrid,
@@ -77,7 +105,27 @@ export class TerrainTextureView {
     const canvas = renderer.getCanvas();
     if (!canvas) return;
 
+    this.updateControlBoardSize(
+      canvas.width / this.controlSurfaceCoverZoom,
+      canvas.height / this.controlSurfaceCoverZoom
+    );
+
     const cameraOffset = worldToScreen(camera.x, camera.y, this.tileWidth, this.tileHeight);
+    if (this.options.lawnOnly) {
+      const surface = this.getControlSurface();
+      renderer.drawScreenImage(
+        surface.canvas,
+        origin.x + (surface.minX - cameraOffset.x) * zoom,
+        origin.y + (surface.minY - cameraOffset.y) * zoom,
+        zoom / surface.resolution,
+        'terrain',
+        undefined,
+        undefined,
+        'linear'
+      );
+      return;
+    }
+
     const visibleMinX = Math.max(
       this.bounds.minX,
       cameraOffset.x - origin.x / zoom - this.viewportPadding
@@ -155,13 +203,7 @@ export class TerrainTextureView {
         }
 
         const color = lawnSamplers
-          ? this.gradeLawnColor(
-            this.sampleLawnBlend(lawnSamplers, world.x, world.y, screenX, screenY),
-            world.x,
-            world.y,
-            screenX,
-            screenY
-          )
+          ? this.sampleAnimeTerrain(lawnSamplers, world.x, world.y, screenX, screenY)
           : this.sampleTerrainColor(samplers, world.x, world.y, screenX, screenY);
 
         pixels.data[index] = color[0];
@@ -175,6 +217,84 @@ export class TerrainTextureView {
     const chunk = { canvas, minX, minY };
     this.chunks.set(key, chunk);
     return chunk;
+  }
+
+  private updateControlBoardSize(viewportWidth: number, viewportHeight: number): void {
+    const mask = this.options.controlMaskImage;
+    if (!this.options.lawnOnly || !mask) return;
+
+    const maskWidth = mask.naturalWidth || mask.width;
+    const maskHeight = mask.naturalHeight || mask.height;
+    const maskAspect = maskWidth / maskHeight;
+    const nextWidth = Math.max(1, viewportWidth, viewportHeight * maskAspect);
+    const nextHeight = nextWidth * (maskHeight / maskWidth);
+    if (Math.abs(this.controlBoardWidth - nextWidth) < 1 &&
+      Math.abs(this.controlBoardHeight - nextHeight) < 1) return;
+
+    this.controlBoardWidth = nextWidth;
+    this.controlBoardHeight = nextHeight;
+    this.controlSurface = null;
+    this.chunks.clear();
+    this.prewarmQueue.length = 0;
+  }
+
+  private getControlSurface(): ControlSurface {
+    const cached = this.controlSurface;
+    if (cached &&
+      Math.abs(cached.boardWidth - this.controlBoardWidth) < 1 &&
+      Math.abs(cached.boardHeight - this.controlBoardHeight) < 1) {
+      return cached;
+    }
+
+    const samplers = this.getLawnSamplers();
+    const center = worldToScreen(
+      this.grid.map.width * 0.5,
+      this.grid.map.height * 0.52,
+      this.tileWidth,
+      this.tileHeight
+    );
+    const minX = center.x - this.controlBoardWidth * 0.5;
+    const minY = center.y - this.controlBoardHeight * 0.5;
+    const resolution = Math.min(
+      this.controlSurfaceResolution,
+      Math.sqrt(this.controlSurfaceMaxPixels / (this.controlBoardWidth * this.controlBoardHeight))
+    );
+    const width = Math.ceil(this.controlBoardWidth * resolution);
+    const height = Math.ceil(this.controlBoardHeight * resolution);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) throw new Error('[TerrainTextureView] Failed to create control terrain canvas');
+
+    const pixels = ctx.createImageData(width, height);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const screenX = x / resolution + minX;
+        const screenY = y / resolution + minY;
+        const world = screenToWorld(screenX, screenY, this.tileWidth, this.tileHeight);
+        const color = this.sampleAnimeTerrain(samplers, world.x, world.y, screenX, screenY);
+        const index = (y * width + x) * 4;
+
+        pixels.data[index] = color[0];
+        pixels.data[index + 1] = color[1];
+        pixels.data[index + 2] = color[2];
+        pixels.data[index + 3] = 255;
+      }
+    }
+
+    ctx.putImageData(pixels, 0, 0);
+    this.controlSurface = {
+      canvas,
+      minX,
+      minY,
+      boardWidth: this.controlBoardWidth,
+      boardHeight: this.controlBoardHeight,
+      resolution,
+    };
+
+    return this.controlSurface;
   }
 
   private schedulePrewarm(startChunkX: number, endChunkX: number, startChunkY: number, endChunkY: number): void {
@@ -250,13 +370,19 @@ export class TerrainTextureView {
     return this.samplers;
   }
 
-  private getLawnSamplers(): readonly TextureSampler[] {
+  private getLawnSamplers(): LawnSamplers {
     if (!this.lawnSamplers) {
       const images = this.options.lawnImages ?? [];
-      if (images.length < 3) {
-        throw new Error('[TerrainTextureView] Lawn-only mode requires three lawn textures');
+      const dirtImage = this.options.dirtImage;
+      const controlMaskImage = this.options.controlMaskImage;
+      if (images.length < 3 || !dirtImage || !controlMaskImage) {
+        throw new Error('[TerrainTextureView] Lawn-only mode requires three lawn textures, one dirt texture, and one control mask');
       }
-      this.lawnSamplers = images.slice(0, 3).map((image) => this.createSampler(image));
+      this.lawnSamplers = {
+        lawn: images.slice(0, 3).map((image) => this.createSampler(image)),
+        dirt: this.createSampler(dirtImage),
+        controlMask: this.createSampler(controlMaskImage),
+      };
     }
 
     return this.lawnSamplers;
@@ -326,6 +452,54 @@ export class TerrainTextureView {
     );
   }
 
+  private sampleAnimeTerrain(
+    samplers: LawnSamplers,
+    worldX: number,
+    worldY: number,
+    screenX: number,
+    screenY: number
+  ): [number, number, number] {
+    const lawn = this.sampleLawnBlend(samplers.lawn, worldX, worldY, screenX, screenY);
+    const control = this.sampleControlMask(samplers.controlMask, screenX, screenY);
+    if (control.grass) {
+      return this.gradeLawnColor(lawn, worldX, worldY, screenX, screenY);
+    }
+
+    const dirtScale = 0.72 * 8;
+    const dirt = this.sampleLinear(
+      samplers.dirt,
+      screenX * dirtScale + 211,
+      screenY * dirtScale - 137
+    );
+    const result = this.mixColor([0, 0, 0], dirt, control.shade);
+
+    return this.gradeLawnColor(result, worldX, worldY, screenX, screenY);
+  }
+
+  private sampleControlMask(mask: TextureSampler, screenX: number, screenY: number): ControlMaskSample {
+    const center = worldToScreen(
+      this.grid.map.width * 0.5,
+      this.grid.map.height * 0.52,
+      this.tileWidth,
+      this.tileHeight
+    );
+    const u = (screenX - center.x) / this.controlBoardWidth + 0.5;
+    const v = (screenY - center.y) / this.controlBoardHeight + 0.5;
+
+    if (u < 0 || u > 1 || v < 0 || v > 1) {
+      return { grass: true, shade: 0 };
+    }
+
+    const [r, g, b] = this.sample(mask, u * mask.width, v * mask.height);
+    const magenta = r > 190 && b > 190 && g < 120 && r + b > g * 3.2;
+    if (magenta) return { grass: true, shade: 0 };
+
+    return {
+      grass: false,
+      shade: Math.max(0, Math.min(1, (r + g + b) / (255 * 3))),
+    };
+  }
+
   private sampleLawnBlend(
     samplers: readonly TextureSampler[],
     worldX: number,
@@ -333,19 +507,19 @@ export class TerrainTextureView {
     screenX: number,
     screenY: number
   ): [number, number, number] {
-    const broad = this.valueNoise(worldX * 0.11 - 4.3, worldY * 0.11 + 7.9, 1301);
-    const mid = this.valueNoise(worldX * 0.28 + 12.1, worldY * 0.28 - 8.4, 1303);
-    const soft = this.valueNoise(worldX * 0.055 + 3.7, worldY * 0.055 + 2.1, 1307);
+    const broad = this.valueNoise(worldX * 0.08 - 4.3, worldY * 0.08 + 7.9, 1301);
+    const mid = this.valueNoise(worldX * 0.2 + 12.1, worldY * 0.2 - 8.4, 1303);
+    const soft = this.valueNoise(worldX * 0.045 + 3.7, worldY * 0.045 + 2.1, 1307);
     const weights = [
-      0.42 + (1 - broad) * 0.22,
-      0.32 + broad * 0.2,
-      0.24 + mid * 0.16 + soft * 0.08,
+      0.46 + (1 - broad) * 0.14,
+      0.2 + Math.max(0, broad - 0.42) * 0.38,
+      0.34 + mid * 0.14 + soft * 0.08,
     ];
     const total = weights[0] + weights[1] + weights[2];
     const samples = [
-      this.sample(samplers[0], screenX * 0.82 + 37, screenY * 0.82 - 61),
-      this.sample(samplers[1], screenX * 0.72 - 281, screenY * 0.72 + 163),
-      this.sample(samplers[2], screenX * 0.94 + 521, screenY * 0.94 - 349),
+      this.sampleLinear(samplers[0], screenX * 1.48 + 37, screenY * 1.48 - 61),
+      this.sampleLinear(samplers[1], screenX * 1.24 - 281, screenY * 1.24 + 163),
+      this.sampleLinear(samplers[2], screenX * 1.72 + 521, screenY * 1.72 - 349),
     ];
     const color: [number, number, number] = [0, 0, 0];
 
@@ -366,18 +540,18 @@ export class TerrainTextureView {
     screenX: number,
     screenY: number
   ): [number, number, number] {
-    const broad = this.valueNoise(worldX * 0.075, worldY * 0.075, 1409);
-    const mid = this.valueNoise(worldX * 0.21 - 5.6, worldY * 0.21 + 2.8, 1417);
+    const broad = this.valueNoise(worldX * 0.052, worldY * 0.052, 1409);
+    const mid = this.valueNoise(worldX * 0.16 - 5.6, worldY * 0.16 + 2.8, 1417);
     let result = color;
 
-    result = this.mixColor(result, [108, 137, 58], 0.1);
-    result = this.lighten(result, (broad - 0.5) * 4 + (mid - 0.5) * 1.6);
+    result = this.mixColor(result, [115, 149, 7], 0.08);
+    result = this.lighten(result, (broad - 0.5) * 3 + (mid - 0.5) * 1.1);
 
-    const worn = Math.max(0, this.valueNoise(worldX * 0.18 + 2.4, worldY * 0.18 - 11.8, 1423) - 0.68);
-    result = this.mixColor(result, [118, 118, 71], worn * 0.1);
+    const worn = Math.max(0, this.valueNoise(worldX * 0.12 + 2.4, worldY * 0.12 - 11.8, 1423) - 0.74);
+    result = this.mixColor(result, [76, 111, 8], worn * 0.08);
 
     const vignette = this.valueNoise(screenX * 0.006, screenY * 0.006, 1427);
-    return this.lighten(result, (vignette - 0.5) * 1.2);
+    return this.lighten(result, (vignette - 0.5) * 0.8);
   }
 
   private gradeTerrainColor(
@@ -474,6 +648,23 @@ export class TerrainTextureView {
       texture.data[index],
       texture.data[index + 1],
       texture.data[index + 2],
+    ];
+  }
+
+  private sampleLinear(texture: TextureSampler, x: number, y: number): [number, number, number] {
+    const x0 = Math.floor(x);
+    const y0 = Math.floor(y);
+    const tx = x - x0;
+    const ty = y - y0;
+    const a = this.sample(texture, x0, y0);
+    const b = this.sample(texture, x0 + 1, y0);
+    const c = this.sample(texture, x0, y0 + 1);
+    const d = this.sample(texture, x0 + 1, y0 + 1);
+
+    return [
+      this.clamp(this.lerp(this.lerp(a[0], b[0], tx), this.lerp(c[0], d[0], tx), ty)),
+      this.clamp(this.lerp(this.lerp(a[1], b[1], tx), this.lerp(c[1], d[1], tx), ty)),
+      this.clamp(this.lerp(this.lerp(a[2], b[2], tx), this.lerp(c[2], d[2], tx), ty)),
     ];
   }
 

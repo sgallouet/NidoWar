@@ -82,6 +82,7 @@ export class IsometricViewport {
     this.grid = new TileGrid(mapW, mapH);
     this.camera.x = mapW * 0.5;
     this.camera.y = mapH * 0.52;
+    this.camera.zoom = this.visualMode === 'base-art' ? 0.56 : 1;
     this.isoRenderer = new IsometricRenderer(new PixiRenderer());
     this.onFrameStats = options.onFrameStats;
   }
@@ -95,7 +96,7 @@ export class IsometricViewport {
     const atlases = await this.loadDecorationAtlases();
     this.torchManifest = await loadSpriteManifest('/assets/manifests/torch.json');
     const terrainMaterials = await this.loadTerrainMaterials();
-    const lawnImages = await this.loadLawnImages();
+    const animeTerrainImages = await this.loadAnimeTerrainImages();
 
     const torchImageUrl = `/assets/${this.torchManifest.image}`;
     const torchImage = await loadImage(torchImageUrl);
@@ -108,7 +109,9 @@ export class IsometricViewport {
       {
         showRoads: this.visualModeConfig.showRoads,
         lawnOnly: this.visualMode === 'base-art',
-        lawnImages,
+        lawnImages: animeTerrainImages.lawn,
+        dirtImage: animeTerrainImages.dirt,
+        controlMaskImage: animeTerrainImages.controlMask,
       }
     );
     this.tileView = new TileView(
@@ -143,14 +146,23 @@ export class IsometricViewport {
     return Object.fromEntries(materials.map((material) => [material.id, material])) as TerrainMaterialSet;
   }
 
-  private async loadLawnImages(): Promise<readonly HTMLImageElement[]> {
-    const urls = [
-      '/assets/sprites/terrain_lawn_a.png',
-      '/assets/sprites/terrain_lawn_b.png',
-      '/assets/sprites/terrain_lawn_c.png',
+  private async loadAnimeTerrainImages(): Promise<{
+    lawn: readonly HTMLImageElement[];
+    dirt: HTMLImageElement;
+    controlMask: HTMLImageElement;
+  }> {
+    const lawnUrls = [
+      '/assets/sprites/terrain_anime_lawn_a.png',
+      '/assets/sprites/terrain_anime_lawn_b.png',
+      '/assets/sprites/terrain_anime_lawn_c.png',
     ];
+    const [lawn, dirt, controlMask] = await Promise.all([
+      Promise.all(lawnUrls.map((url) => loadImage(url))),
+      loadImage('/assets/sprites/terrain_anime_dirt.png'),
+      loadImage('/assets/sprites/terrain_control_layer_mask.png'),
+    ]);
 
-    return Promise.all(urls.map((url) => loadImage(url)));
+    return { lawn, dirt, controlMask };
   }
 
   private async loadDecorationAtlases(): Promise<ReadonlyMap<string, TileSpriteAtlas>> {

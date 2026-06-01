@@ -13,8 +13,8 @@ const performanceMonitor = createPerformanceMonitor();
 // Start the current rendering foundation.
 // All technical logic (renderer choice, camera, input, map, drawing) lives in engine/.
 const viewport = new IsometricViewport({
-  mapWidth: 90,
-  mapHeight: 90,
+  mapWidth: 140,
+  mapHeight: 140,
   onFrameStats: (stats) => {
     performanceMonitor?.record(stats.frameMs, {
       draw: stats.drawCalls,

@@ -42,9 +42,9 @@
 
 ---
 
-## 2026-05-30 - Original High-Detail Isometric Pixel Art Direction
+## 2026-05-30 - Original High-Detail Isometric Pixel Art Direction (Superseded)
 
-**Decision**: Make NidoWar's art direction an explicit phase gate before Phase 2 gameplay work. The target is original high-detail modern isometric pixel fantasy strategy art with dense authored terrain, readable unit silhouettes, layered world props, and dramatic warm/cool lighting.
+**Decision**: Superseded on 2026-05-31 by the cartoon-anime inked art direction reset. Historical note: this made NidoWar's art direction an explicit phase gate before Phase 2 gameplay work.
 
 **Rationale**:
 - Phase 1 proved the renderer, but the prototype map does not meet the desired visual quality bar.
@@ -68,7 +68,7 @@
 
 **Rationale**:
 - Generated transition art that tries to connect one exact terrain material to another exact terrain material is brittle and usually fails to match both sides.
-- The desired reference quality comes from authored composition, painterly pixel detail, soft overlap, clustered props, and controlled lighting, not from perfect directional transition pieces.
+- The desired reference quality comes from authored composition, sampled color, black/dark-olive ink demarcation, soft overlap, clustered props, and controlled lighting, not from perfect directional transition pieces.
 - Reusable brush components give the renderer more control over item size, color, shadowing, placement density, and in-game iteration speed.
 
 **Constraints enforced**:
@@ -83,7 +83,7 @@
 
 ## 2026-05-31 - Forest-Framed Base Art Gate
 
-**Decision**: The first Phase 2 reset gate is no longer a bare meadow-only comparison. It must include target-like macro composition: a calm readable clearing framed by forest-border massing, clustered rocks, restrained shrubs, subtle dirt wear, contact shadows, and directional shadows. Roads, walls, landmarks, torches, water, mountains, and night lighting remain later layers.
+**Decision**: Superseded by the cartoon-anime grass-only reset. The forest-framed gate is no longer the current first acceptance step.
 
 **Rationale**:
 - The target reference reads well because of its macro hierarchy: quiet center, dense forest edges, clustered rocks, and physical shadows. Removing trees entirely makes the comparison unfair and pushes the implementation toward noisy ground texture instead of authored composition.
@@ -98,6 +98,26 @@
 - The map edge/void must not be visible in acceptance screenshots.
 
 **Status**: Approved as the updated 2.R2-2.R4 direction.
+
+---
+
+## 2026-05-31 - Cartoon-Anime Inked Art Direction Reset
+
+**Decision**: Create a new branch for the revised art target and reset the first visual gate to grass-only cartoon/anime isometric terrain. The new target uses saturated cel-shaded colors, strong black/dark-olive ink demarcation, and exact sampled palette prompts from the supplied 2026-05-31 reference image.
+
+**Rationale**:
+- The previous high-detail pixel-art target was too hard to match consistently with generated transparent assets.
+- Strong black/dark-olive outlines help chroma-key cleanup and make generated sprites easier to separate from flat `#ff00ff` backgrounds.
+- Matching color must be explicit; prompts now include sampled hex colors for grass, dirt, stone, water, foliage shadow, and ink.
+- The first checkpoint must isolate the lawn so we can judge palette and line language before adding trees, roads, walls, rocks, water, mountains, buildings, or units.
+
+**Constraints enforced**:
+- `docs/ASSET_PROMPTS.md` is now based on the cartoon/anime inked target.
+- The first prompt batch is the grass color level set for runtime blending.
+- Grass prompts must include sampled target hex colors: ink `#051005 #0c1a08 #082606`, deep shadow `#0a440e #11470c #204608`, dark grass `#2d4f0c #41670a #4c6f08`, mid grass `#608306 #739507 #729708`, light grass `#84a80a #84aa0c`, accents `#3e9811 #187317`.
+- Do not reintroduce forests, rocks, roads, walls, water, mountains, landmarks, or units until grass-only screenshots match the target palette and black-outline language.
+
+**Status**: Approved as the active art branch direction on `codex/anime-ink-grass-target`.
 
 ---
 *All future rendering decisions must be recorded here before code is written.*

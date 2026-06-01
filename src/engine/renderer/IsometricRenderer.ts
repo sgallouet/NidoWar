@@ -75,7 +75,8 @@ export class IsometricRenderer {
     scale = 1,
     layer: RenderLayer = 'terrain',
     alpha?: number,
-    tint?: string
+    tint?: string,
+    smoothing?: 'nearest' | 'linear'
   ): void {
     this.inner.drawImage({
       image,
@@ -85,6 +86,7 @@ export class IsometricRenderer {
       alpha,
       tint,
       layer,
+      smoothing,
     });
   }
 

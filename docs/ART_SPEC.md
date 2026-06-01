@@ -1,12 +1,12 @@
 # Art Specification (Codex Reference)
 
-All graphics are pixel art sprites, spritesheets, or manifest-declared terrain materials.
+All graphics are cartoon-anime isometric sprites, spritesheets, or manifest-declared terrain materials.
 
 ## Strict Requirements
 - Checked-in runtime art is always transparent when it is a sprite, prop, decal, unit, building, effect, reusable overlay, or brush component.
 - Generated source sheets should use a flat `#ff00ff` chroma-key background when the generator cannot reliably export alpha. Remove that key locally before committing runtime assets, then reject or regenerate if dark matte pixels or magenta fringes remain.
 - Opaque terrain material textures are allowed only for base materials such as grass, dirt, stone, water, and forest floor.
-- The visual target is defined in `docs/ART_DIRECTION.md`: original high-detail modern isometric pixel fantasy strategy art with dense terrain storytelling, painterly pixel clusters, dramatic warm/cool lighting, and strong readable silhouettes.
+- The visual target is defined in `docs/ART_DIRECTION.md`: original cartoon-anime isometric fantasy strategy art with saturated sampled colors, strong black/dark-olive ink demarcation, cel-shaded terrain, and strong readable silhouettes.
 - Reference screenshots from commercial games are a quality bar only. Do not request or create exact copies of their sprites, structures, UI, faction marks, map layouts, or distinctive compositions.
 - Smartphone-first readability still matters: dense art is allowed, but units, interactables, roads, obstacles, and selection states must stay legible at small sizes.
 - World map and battle arena art must share the same palette logic, lighting language, perspective discipline, and sprite density.
@@ -56,6 +56,6 @@ Every sprite or spritesheet must have a matching `.json` sidecar file that defin
 - Generated art is not accepted until it has a matching manifest and a quick in-game or atlas QA screenshot.
 
 ## UI Style
-- Minimal text. Rich fantasy strategy interface, readable over dense pixel art.
+- Minimal text. Rich fantasy strategy interface, readable over dense cartoon/anime map art.
 - Icons and symbols preferred over words.
 - High contrast, readable on phone in bright sunlight.

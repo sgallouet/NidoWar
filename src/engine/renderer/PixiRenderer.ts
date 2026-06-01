@@ -61,7 +61,7 @@ export class PixiRenderer implements IRenderer {
     const container = document.getElementById('app');
     if (container) {
       container.appendChild(this.app.canvas);
-      this.app.canvas.style.cssText = 'display:block; width:100vw; height:100vh; image-rendering:pixelated;';
+      this.app.canvas.style.cssText = 'display:block; width:100vw; height:100vh;';
       // Hide any previous canvas for clean switching in dev
       const oldCanvas = document.getElementById('game') as HTMLCanvasElement | null;
       if (oldCanvas) oldCanvas.style.display = 'none';
@@ -123,7 +123,7 @@ export class PixiRenderer implements IRenderer {
     const key = `${layer}:image:${this.getImageKey(options.image)}`;
     const sprite = this.getPooledSprite(layer, key);
 
-    sprite.texture = this.getImageTexture(options.image);
+    sprite.texture = this.getImageTexture(options.image, options.smoothing ?? (layer === 'terrain' ? 'linear' : 'nearest'));
     sprite.anchor.set(0);
     sprite.roundPixels = false;
     sprite.position.set(options.screenX, options.screenY);
@@ -238,19 +238,23 @@ export class PixiRenderer implements IRenderer {
     return `${options.image.src}:${frameIndex}:${frame.x},${frame.y},${frame.w},${frame.h}`;
   }
 
-  private getImageTexture(image: HTMLImageElement | HTMLCanvasElement): Texture {
-    const key = this.getImageKey(image);
+  private getImageTexture(image: HTMLImageElement | HTMLCanvasElement, smoothing: 'nearest' | 'linear' = 'nearest'): Texture {
+    const key = `${this.getImageKey(image)}:${smoothing}`;
     const cached = this.imageTextureCache.get(key);
     if (cached) return cached;
 
     const texture = Texture.from(image);
-    this.applyPixelScale(texture);
+    this.applyScaleMode(texture, smoothing);
     this.imageTextureCache.set(key, texture);
     return texture;
   }
 
   private applyPixelScale(texture: Texture): void {
-    texture.source.scaleMode = 'nearest';
+    this.applyScaleMode(texture, 'nearest');
+  }
+
+  private applyScaleMode(texture: Texture, smoothing: 'nearest' | 'linear'): void {
+    texture.source.scaleMode = smoothing === 'nearest' ? 'nearest' : 'linear';
     texture.source.style.update();
   }
 

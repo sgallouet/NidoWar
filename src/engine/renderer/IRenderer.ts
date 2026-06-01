@@ -22,6 +22,7 @@ export interface ImageDrawOptions {
   alpha?: number;
   tint?: string;
   layer?: RenderLayer;
+  smoothing?: 'nearest' | 'linear';
 }
 
 export interface RadialLightDrawOptions {

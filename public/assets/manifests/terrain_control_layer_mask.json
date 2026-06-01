@@ -1,0 +1,10 @@
+{
+  "name": "terrain_control_layer_mask",
+  "image": "sprites/terrain_control_layer_mask.png",
+  "frameSize": { "w": 1672, "h": 941 },
+  "frames": [
+    { "x": 0, "y": 0, "w": 1672, "h": 941, "duration": 0, "center": { "x": 836, "y": 470.5 } }
+  ],
+  "scale": 1,
+  "anchor": { "x": 0.5, "y": 0.5 }
+}

@@ -23,7 +23,7 @@ export class Camera {
   }
 
   zoomBy(factor: number): void {
-    this.zoom = Math.min(2.4, Math.max(0.6, this.zoom * factor));
+    this.zoom = Math.min(2.4, Math.max(0.48, this.zoom * factor));
   }
 
   /**
