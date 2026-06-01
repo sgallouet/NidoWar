@@ -121,7 +121,7 @@ export class TerrainTextureView {
         'terrain',
         undefined,
         undefined,
-        'linear'
+        'nearest'
       );
       return;
     }
@@ -375,11 +375,11 @@ export class TerrainTextureView {
       const images = this.options.lawnImages ?? [];
       const dirtImage = this.options.dirtImage;
       const controlMaskImage = this.options.controlMaskImage;
-      if (images.length < 3 || !dirtImage || !controlMaskImage) {
-        throw new Error('[TerrainTextureView] Lawn-only mode requires three lawn textures, one dirt texture, and one control mask');
+      if (images.length < 2 || !dirtImage || !controlMaskImage) {
+        throw new Error('[TerrainTextureView] Lawn-only mode requires at least two lawn textures, one dirt texture, and one control mask');
       }
       this.lawnSamplers = {
-        lawn: images.slice(0, 3).map((image) => this.createSampler(image)),
+        lawn: images.map((image) => this.createSampler(image)),
         dirt: this.createSampler(dirtImage),
         controlMask: this.createSampler(controlMaskImage),
       };
@@ -465,15 +465,15 @@ export class TerrainTextureView {
       return this.gradeLawnColor(lawn, worldX, worldY, screenX, screenY);
     }
 
-    const dirtScale = 0.72 * 8;
-    const dirt = this.sampleLinear(
+    const dirtScale = 0.72 * 4;
+    const dirt = this.sampleDirtTexture(
       samplers.dirt,
       screenX * dirtScale + 211,
       screenY * dirtScale - 137
     );
-    const result = this.mixColor([0, 0, 0], dirt, control.shade);
+    const result = this.mixColor([43, 42, 16], dirt, control.shade);
 
-    return this.gradeLawnColor(result, worldX, worldY, screenX, screenY);
+    return this.gradeDirtColor(result, control.shade, worldX, worldY, screenX, screenY);
   }
 
   private sampleControlMask(mask: TextureSampler, screenX: number, screenY: number): ControlMaskSample {
@@ -511,15 +511,13 @@ export class TerrainTextureView {
     const mid = this.valueNoise(worldX * 0.2 + 12.1, worldY * 0.2 - 8.4, 1303);
     const soft = this.valueNoise(worldX * 0.045 + 3.7, worldY * 0.045 + 2.1, 1307);
     const weights = [
-      0.46 + (1 - broad) * 0.14,
-      0.2 + Math.max(0, broad - 0.42) * 0.38,
-      0.34 + mid * 0.14 + soft * 0.08,
+      0.58 + (1 - broad) * 0.1 + soft * 0.05,
+      0.42 + broad * 0.12 + mid * 0.04,
     ];
-    const total = weights[0] + weights[1] + weights[2];
+    const total = weights[0] + weights[1];
     const samples = [
-      this.sampleLinear(samplers[0], screenX * 1.48 + 37, screenY * 1.48 - 61),
-      this.sampleLinear(samplers[1], screenX * 1.24 - 281, screenY * 1.24 + 163),
-      this.sampleLinear(samplers[2], screenX * 1.72 + 521, screenY * 1.72 - 349),
+      this.sample(samplers[0], screenX * 1.08 + 37, screenY * 1.08 - 61),
+      this.sample(samplers[1], screenX * 0.92 - 281, screenY * 0.92 + 163),
     ];
     const color: [number, number, number] = [0, 0, 0];
 
@@ -533,6 +531,20 @@ export class TerrainTextureView {
     return [this.clamp(color[0]), this.clamp(color[1]), this.clamp(color[2])];
   }
 
+  private sampleDirtTexture(texture: TextureSampler, x: number, y: number): [number, number, number] {
+    const center = this.sampleLinear(texture, x, y);
+    const a = this.sampleLinear(texture, x - 1.8, y + 0.7);
+    const b = this.sampleLinear(texture, x + 1.8, y - 0.7);
+    const c = this.sampleLinear(texture, x + 0.6, y + 1.8);
+    const d = this.sampleLinear(texture, x - 0.6, y - 1.8);
+
+    return [
+      this.clamp(center[0] * 0.62 + (a[0] + b[0] + c[0] + d[0]) * 0.095),
+      this.clamp(center[1] * 0.62 + (a[1] + b[1] + c[1] + d[1]) * 0.095),
+      this.clamp(center[2] * 0.62 + (a[2] + b[2] + c[2] + d[2]) * 0.095),
+    ];
+  }
+
   private gradeLawnColor(
     color: [number, number, number],
     worldX: number,
@@ -544,14 +556,37 @@ export class TerrainTextureView {
     const mid = this.valueNoise(worldX * 0.16 - 5.6, worldY * 0.16 + 2.8, 1417);
     let result = color;
 
-    result = this.mixColor(result, [115, 149, 7], 0.08);
-    result = this.lighten(result, (broad - 0.5) * 3 + (mid - 0.5) * 1.1);
+    result = this.mixColor(result, [142, 181, 5], 0.14);
+    result = this.lighten(result, 6 + (broad - 0.5) * 3.4 + (mid - 0.5) * 1.2);
 
     const worn = Math.max(0, this.valueNoise(worldX * 0.12 + 2.4, worldY * 0.12 - 11.8, 1423) - 0.74);
-    result = this.mixColor(result, [76, 111, 8], worn * 0.08);
+    result = this.mixColor(result, [95, 132, 7], worn * 0.06);
 
     const vignette = this.valueNoise(screenX * 0.006, screenY * 0.006, 1427);
     return this.lighten(result, (vignette - 0.5) * 0.8);
+  }
+
+  private gradeDirtColor(
+    color: [number, number, number],
+    shade: number,
+    worldX: number,
+    worldY: number,
+    screenX: number,
+    screenY: number
+  ): [number, number, number] {
+    if (shade < 0.2) {
+      return this.mixColor(color, [55, 48, 20], 0.28);
+    }
+
+    const broad = this.valueNoise(worldX * 0.05 + 9.2, worldY * 0.05 - 3.7, 1439);
+    const mid = this.valueNoise(worldX * 0.14 - 2.6, worldY * 0.14 + 5.1, 1447);
+    const vignette = this.valueNoise(screenX * 0.006 + 17.2, screenY * 0.006 - 6.4, 1451);
+    let result = color;
+
+    result = this.mixColor(result, [218, 178, 82], 0.16);
+    result = this.lighten(result, 7 + (broad - 0.5) * 2 + (mid - 0.5) * 1.2 + (vignette - 0.5) * 0.7);
+
+    return result;
   }
 
   private gradeTerrainColor(

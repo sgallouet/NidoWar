@@ -154,7 +154,6 @@ export class IsometricViewport {
     const lawnUrls = [
       '/assets/sprites/terrain_anime_lawn_a.png',
       '/assets/sprites/terrain_anime_lawn_b.png',
-      '/assets/sprites/terrain_anime_lawn_c.png',
     ];
     const [lawn, dirt, controlMask] = await Promise.all([
       Promise.all(lawnUrls.map((url) => loadImage(url))),
